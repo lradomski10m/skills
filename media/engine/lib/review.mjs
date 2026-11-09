@@ -52,16 +52,21 @@ export function reviewReadme({ spec, runName, totalSec, folders }) {
 }
 
 async function frameStrip(video, times, out, tmpRoot) {
-  const tmp = path.join(tmpRoot, `strip-${process.pid}-${Date.now()}`);
-  await fs.mkdir(tmp, { recursive: true });
-  const frames = [];
-  for (const [k, t] of times.entries()) {
-    const f = path.join(tmp, `f${k}.png`);
-    await ffmpeg(['-ss', t.toFixed(3), '-i', video, '-frames:v', '1', '-vf', `scale=${THUMB_W}:-1`, f]);
-    frames.push(f);
+  await fs.mkdir(tmpRoot, { recursive: true });
+  const tmp = await fs.mkdtemp(path.join(tmpRoot, 'strip-'));
+  try {
+    const frames = [];
+    for (const [k, t] of times.entries()) {
+      const f = path.join(tmp, `f${k}.png`);
+      await ffmpeg(['-ss', t.toFixed(3), '-i', video, '-frames:v', '1', '-vf', `scale=${THUMB_W}:-1`, f]);
+      frames.push(f);
+    }
+    const inputs = frames.flatMap((f) => ['-i', f]);
+    await ffmpeg([...inputs, '-filter_complex', frames.length > 1 ? `hstack=inputs=${frames.length}` : 'null', out]);
+  } finally {
+    // The strip PNG is the deliverable; the per-frame temp folder never is.
+    await fs.rm(tmp, { recursive: true, force: true });
   }
-  const inputs = frames.flatMap((f) => ['-i', f]);
-  await ffmpeg([...inputs, '-filter_complex', frames.length > 1 ? `hstack=inputs=${frames.length}` : 'null', out]);
 }
 
 export async function buildReview({ spec, paths, inputs: useInputs = false, offline = false, log = console.log }) {

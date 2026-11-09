@@ -2,7 +2,7 @@
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "media",
   "displayName": "Media",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Short-form media skills. ad-video: ideate, build a media kit, generate and assemble localized 9:16 promo videos for any product.",
   "logo": "assets/logo.png",
   "suggestedPrompts": [

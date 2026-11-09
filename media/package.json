@@ -1,6 +1,6 @@
 {
   "name": "@lradomski/media-skills",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Engine for the media plugin's skills: spec-driven short-form 9:16 video ad assembly (ffmpeg + sharp).",
   "license": "MIT",
