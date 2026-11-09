@@ -1,21 +1,24 @@
 # Media kit
 
 Permanent, approved, reusable media for this project's videos (committed). Scratch work
-lives in `media-work/` (gitignored). Used by the `ad-video` skill and its engine.
+lives in `media-work/` (gitignored). Used by the `ad-video` skill and its engine. Every
+file a person edits is YAML or Markdown.
 
-| Folder | What | Engine reads it |
+| Path | What | Engine reads it |
 |---|---|---|
-| `brand/` | `brand.json` (name, stamp mark, URL, icon, chip, font, end-card style), `colours.json`, `icon.png`, optional `chip.png`, `fonts/` | yes |
-| `voices/cast.json` | voice roles per locale (`"*"` = every locale) | yes |
-| `voices/lines/<locale>/` | approved reusable recordings: CTA, slogan, sign-off, "link in bio" | — |
-| `copy/<locale>.json` | stamp labels, end-card copy (engine) + slogans, claims, hashtags, captions (skill) | partly |
-| `audio/` | sound logo, SFX, `music/<mood>/` approved beds | — |
-| `overlays/` | stamps, badges, lower thirds, title cards, stingers | — |
-| `footage/` | screenshots, app demo recordings, product shots | — |
+| `brand.yaml` | name, stamp mark, URL, icon, chip, font, end-card style, colours, providers | yes |
+| `brand/` | `icon.png`, optional `chip.png`, `fonts/` | via `brand.yaml` |
+| `voices.yaml` | voice roles per locale (`"*"` = every locale) | yes |
+| `voices/lines/<locale>/` | approved reusable recordings: CTA, slogan, sign-off | — |
+| `copy/<locale>.yaml` | stamp labels, end-card copy, shared text (engine) + slogans, claims, hashtags (skill) | partly |
+| `presets/*.md` | this brand's own ad patterns (a Markdown doc + one yaml block) | yes |
+| `templates/*.svg` | this brand's overlays and cards (`{{placeholders}}`) | yes |
+| `audio/` | sound logo, `sfx/<name>.wav`, `music/<mood>/` approved beds | sfx yes |
+| `footage/` | screenshots, app demo recordings, product shots (`kit:footage/…`) | when referenced |
 | `characters/` | reference stills for recurring mascots | — |
-| `campaigns/<id>/` | `concept.md`, `script-table.md`, `base.json`, `<locale>.json`, prompts used | yes (specs) |
+| `campaigns/<id>/` | `storyboard.md` (+ `storyboard.<locale>.md`, `hooks.mjs`), `concept.md`, `script-table.md` | yes |
 
-Providers used by this project: images = fal Nano Banana · video = fal FLUX 3 Max ·
-voice + music = ElevenLabs. (Edit if different.)
+Start a campaign by copying `campaigns/_template/` to `campaigns/<id>/` and setting
+`campaign: <id>` in its storyboard.
 
 Promotion rule: an item moves here from `media-work/` only once approved and reusable.

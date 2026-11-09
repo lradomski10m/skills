@@ -5,7 +5,7 @@ usable from **Codex** and **Google Antigravity**. MIT licensed.
 
 | Plugin | Skills | What it does |
 |---|---|---|
-| [`media`](media/) | `ad-video` | Plan, generate, assemble and localize short-form 9:16 promo videos (TikTok, Reels, Shorts) for any product: ideation from product context, a reusable project media kit, generation through the fal and ElevenLabs MCP servers, and a local ffmpeg/sharp engine that times, brands, mixes and reviews the result. |
+| [`media`](media/) | `ad-video` | Plan, generate, assemble and localize short-form 9:16 promo videos (TikTok, Reels, Shorts) for any product: ideation from product context, a reusable project media kit, generation through the fal and ElevenLabs MCP servers, and a local composition engine (ffmpeg, sharp, resvg) that turns a Markdown/YAML storyboard into a timed, branded, mixed and reviewed video. New video types are presets and templates, not code. |
 
 More skills land as folders under a plugin's `skills/`; a new domain becomes a new plugin
 folder next to `media/`.
@@ -21,7 +21,7 @@ folder next to `media/`.
 
 Use it by asking for a video ad, or run `/media:ad-video`. Then sign in to the bundled
 MCP servers with `/mcp` (fal, ElevenLabs). The plugin's engine dependencies (sharp,
-qrcode) are installed automatically from its lockfile.
+qrcode, yaml, resvg) are installed automatically from its lockfile.
 
 Recommend it to everyone on a project with a committed `.claude/settings.json`:
 
@@ -98,6 +98,14 @@ miss.
 
 Assembly is local and free. The skill states the price before every paid step and asks
 first.
+
+## Upgrading from 0.1.x
+
+0.2.0 replaces the JSON campaign specs with `storyboard.md` and the JSON media kit with
+YAML. Run `node <plugin>/engine/cli.mjs migrate-kit` in the project. It writes
+`brand.yaml`, `voices.yaml`, `copy/<locale>.yaml` and `campaigns/<id>/storyboard.md`,
+and moves the old files to `media-kit/_alt/0.1.x/`. The engine's live generation mode
+(API keys) is gone. Generate through the MCP servers and `ingest`.
 
 ## Not yet verified
 

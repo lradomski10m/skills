@@ -1,27 +1,16 @@
-# <Campaign> — <title> (<locale>)
+# <Campaign> — script table (<locale>)
 
 Concept: `concept.md` · Audience / platform: <…> · Target length: <~30 s> · Music mood: <…>
 
-## Hook
-| On screen | Spoken | Duration |
-|---|---|---|
-| <hook text> | <same / none> | ≤ 2 s |
-
-## Shots
-| # | Shot id | Rule / beat | Action (visible: start → break → hold) | Line (VO) | Reaction (quip / stamp / card) | Beat mode |
-|---|---|---|---|---|---|---|
-| 1 | <id> | <rule> | <start state, rule kept> → <the break> → <hold> | "<line>" | <stamp + quip> | action / settle |
-
-## End card
-| Element | Content |
-|---|---|
-| Style | real-sheet / grid / grid-strip / tilted / classic |
-| Announcer | "<line>" (stamp lands at "<phrase>") |
-| CTA / hint | "<Go to example.com>" / "<link in bio ↓>" |
-| Sheet text (real-sheet) | tagline "<…>", order line "<…>", QR <https://…> |
+| # | Beat | What we see | What we hear | On-screen text | Pattern |
+|---|---|---|---|---|---|
+| hook | <the scroll-stopper> | <first frame> | "<spoken hook>" | <hook text> | hook |
+| 1 | <one idea> | <one physical event: start → action → hold> | "<line>" → "<reaction>" | <stamp / banner / none> | <reveal / montage / fail / demo / title / dialogue / …> |
+| end | <payoff> | <end card style> | "<CTA, URL spoken>" | <CTA, QR> | end card |
 
 ## Checks before generating
-- [ ] Every rule is visible in the first frame, then broken.
-- [ ] Every beat is one physical event a model can render.
-- [ ] No text, logos, documents or real brands requested from a model.
+- [ ] Every setup is visible before its payoff.
+- [ ] Every beat a model renders is one physical event.
+- [ ] No text, logos or real brands requested from a model.
 - [ ] Claims only from the kit's allowed list.
+- [ ] Every beat names a pattern (`patterns.md`); any gap is agreed as a project preset.

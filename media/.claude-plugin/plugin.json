@@ -1,7 +1,7 @@
 {
   "name": "media",
   "displayName": "Media",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Short-form media production skills. ad-video: ideate, build a reusable media kit, generate (fal, ElevenLabs via MCP) and assemble/localize 9:16 promo videos for any product.",
   "author": {
     "name": "Luke Radomski",

@@ -11,11 +11,12 @@ read-only tool per MCP (fal: `check_account_status`; ElevenLabs: `creative_list_
 |---|---|
 | Node ≥ 22 | https://nodejs.org (or `nvm install 22`) |
 | ffmpeg with libass | macOS `brew install ffmpeg-full` (plain `ffmpeg` lacks libass; the engine prefers ffmpeg-full automatically) · Debian/Ubuntu `apt install ffmpeg` · Windows `winget install Gyan.FFmpeg` (full build) · or set `MEDIA_FFMPEG` / `MEDIA_FFPROBE` |
-| Engine deps (sharp, qrcode) | Claude Code installs them with the plugin; elsewhere `npm ci` in the plugin's `media/` folder |
-| Font | bundled (Inter, OFL); a kit may add its own in `brand/fonts/` |
+| Engine deps (sharp, qrcode, yaml, @resvg/resvg-js) | Claude Code installs them with the plugin; elsewhere `npm ci` in the plugin's `media/` folder |
+| Font | bundled (Inter, OFL); a kit adds its own with `font.files` in `brand.yaml` |
 | fal account | sign up at fal.ai, add a card, set a spend limit |
 | ElevenLabs account | Starter plan or higher for commercial use |
 | `.gitignore` | add `media-work/` in the consuming project |
+| A 0.1.x JSON kit | `node "$E" migrate-kit` converts it to YAML (old files move to `media-kit/_alt/0.1.x/`) |
 
 ## Claude Code
 

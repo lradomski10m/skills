@@ -1,6 +1,6 @@
 # Phase 1 — Ideation
 
-Goal: from product context to one approved concept, mapped onto shot types the engine
+Goal: from product context to one approved concept, mapped onto patterns the engine
 can make. Output: `media-kit/campaigns/<campaign>/concept.md`.
 
 ## 1. Product context (read first, ask second)
@@ -40,7 +40,7 @@ Write 5–10, each:
 - **Hook** (first 1–2 s, on screen + spoken): the thing that stops the scroll.
 - **What happens**: 3–6 beats, physically visible (models render actions, not ideas).
 - **Payoff / product moment**: where the product solves it; one line of CTA.
-- **Shot types used** (`shot-types.md`) and any **todo** type it needs.
+- **Patterns used** (`patterns.md`) and any beat no built-in pattern covers (a project preset to write).
 - **Locales**: does it translate, or is it market-specific?
 
 ## 4. Score and recommend
@@ -59,5 +59,5 @@ Also give a rough cost (`lessons.md` §Costs) and the number of paid generations
 ## 5. Hand-off
 
 The user picks one. Write `concept.md`: context summary, the scenario, script-level
-beats, shot types, locales, the hook variants to test, open questions. Then go to
+beats, patterns, locales, the hook variants to test, open questions. Then go to
 Phase 2 (media kit) — list what the concept needs from the kit.

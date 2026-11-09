@@ -1,41 +1,76 @@
 # Worked example — "photo rules, broken by animals"
 
-An anonymized walk-through of a finished campaign: a document-photo service, ~33 s, Polish
-first, English overlay later. The spec is in the engine's test fixtures
-(`engine/test/fixtures/campaigns/animals/`).
+An anonymized, finished campaign for a document-photo service: about 33 s, Polish first
+and English after. Its storyboard is the engine's test fixture
+`engine/test/fixtures/campaigns/animals/storyboard.md`, and its timing is the engine's
+golden test. A second, neutral example that uses every pattern (mission card → montage
+with a HUD → fail → phone demo → end card) is
+`engine/test/fixtures/campaigns/showcase/storyboard.md`.
 
 ## Concept (phase 1)
 
-- Audience: adults who need an ID/passport photo; everyone has a bad one.
-- Format: "rules explained by animals" — each official photo rule broken by the animal
-  famous for breaking it. Shareable (cute + relatable), cheap (no dialogue), translatable.
-- Scored highest on shareability and cost; risk low (no people, no real documents).
+- **Audience**: adults who need an ID or passport photo; everyone has a bad one.
+- **Format**: "rules explained by animals". Each official rule is broken by the animal
+  famous for breaking it. It is shareable (cute and relatable), cheap (no dialogue) and
+  translates easily.
+- **Patterns**: hook → 4 × reveal (`action-verdict`) → end card (`end-card-real-sheet`)
+  with the four animals as perfect photos.
 
 ## Script table (phase 3)
 
-| # | Shot | Rule | Action | Line | Reaction | Beat |
-|---|---|---|---|---|---|---|
-| 1 | quokka | Neutral expression | calm → wide grin, holds it | "Rule one: neutral expression. No smiling." | REJECTED + "Oh no…" | action |
-| 2 | dog | Head straight | alert → sharp head tilt, holds | "Rule two: head straight. No tilting." | REJECTED + "Seriously?" | action |
-| 3 | cow | Hair off the eyes | eyes visible → fringe falls over both eyes | "Rule three: hair can't cover your eyes." | REJECTED + "Not even a little." | action |
-| 4 | chameleon | Look at the camera | eyes swivel apart, then still | "Rule four: look straight at the camera." | REJECTED + "Both eyes, same direction…" | settle |
+| # | Beat | What we see | What we hear | On-screen text | Pattern |
+|---|---|---|---|---|---|
+| 1 | neutral expression | quokka, calm → wide grin, holds it → white result photo | "One: neutral expression. No smiling." → "Oh no…" | REJECTED stamp | reveal (action) |
+| 2 | head straight | dog, alert → sharp head tilt, holds | "Two: head straight." → "Seriously?" | REJECTED | reveal (action) |
+| 3 | eyes visible | highland cow, eyes visible → fringe falls over both eyes | "Three: hair can't cover your eyes." → "Not even a little." | REJECTED | reveal (action) |
+| 4 | look at the camera | chameleon, eyes swivel apart, then still | "Four: look straight at the camera." → "Both eyes, same direction…" | REJECTED | reveal (settle) |
+| end | the payoff | the four animals as compliant photos on a print sheet | announcer CTA | APPROVED stamp, CTA, QR | end card |
 
-Hook: "Passport photo requirements" (on screen + spoken). End card: `real-sheet` with
-the four perfect photos, APPROVED stamp, announcer CTA, QR to the localized landing page.
+## Storyboard excerpt
 
-## Production notes
+````markdown
+---
+campaign: animals
+locales: [pl, en-us]
+tempo: snappy
+cuts: { sfx: whoosh }
+hook: { text: { t: hook }, line: hook, duration: 2 }
+brandBug: { from: 0 }
+music: { bed: bed }
+end: { preset: end-card-real-sheet, line: endcard.announcer, copy: { t: endcard.copy }, minDuration: 3 }
+---
+## Shot quokka — neutral expression
+```yaml
+preset: action-verdict
+clip: quokka.oneshot
+result: quokka.result
+line: quokka.line
+quip: quokka.quip
+```
+````
 
-- Each clip: one FLUX 3 Max take from a habitat still, with an edited end frame; two of
-  four needed a second take (timing and head pose).
-- Result stills: Nano Banana edit of each clip's last frame; the chameleon's first
-  result had the wrong head angle — redone from the actual last frame.
-- Voice: narrator (warm female), announcer (male, sped 1.2×); the hook was regenerated in
-  context to fix an accent; a stretched quip spelling was replaced.
-- Music: three ElevenLabs options; the pick (playful pizzicato/marimba) is levelled and
-  ducked by the engine.
-- Kit additions promoted at the end: voice cast, stamp labels, end-card copy, the music
-  bed, the brand chip.
+## What happened in production
+
+- **Clips**: one FLUX 3 Max take per animal from a habitat still, with an edited end
+  frame. Two of the four needed a second take, one for timing and one for head pose.
+- **Cow**: the first clip had the fringe over the eyes from frame 1, so the rule was
+  never visible. It was re-prompted with the eyes visible first.
+- **Result stills**: Nano Banana edits of each clip's last frame. The chameleon's first
+  result had the wrong head angle, so it was redone from the real last frame.
+- **Voice**:
+  - narrator (warm female) and announcer (male, sped up 1.2×);
+  - the hook was regenerated in context to fix an accent;
+  - a stretched quip spelling ("nieeee") was replaced.
+- **Music**: three ElevenLabs options. The pick (playful pizzicato/marimba, ~118 BPM) is
+  levelled and ducked by the engine.
+- **Graphics**:
+  - the drawn logo pill was rejected for a screenshot of the real site header;
+  - the stamp moved low, off the faces;
+  - burned-in captions were removed;
+  - the end card went from a tilted paper sheet to the brand's real print-sheet look.
+- **Kit additions promoted at the end**: voice cast, stamp labels, end-card copy, the
+  music bed, the brand chip, and the four perfect photos as mascot references.
 
 ## Cost
 
-≈ $5 in total: 4 clips + 2 retakes, ~12 stills/edits, ~14 voice takes, 3 music tracks.
+≈ $5 in total: 4 clips + 2 retakes, ~12 stills and edits, ~14 voice takes, 3 music tracks.

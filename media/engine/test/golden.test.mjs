@@ -15,7 +15,7 @@ import { makeText, voiceSpeed } from '../lib/compose/text.mjs';
 import { loadKit } from '../lib/kit.mjs';
 
 const STORYBOARD = path.join(FIXTURES_DIR, 'campaigns', 'animals', 'storyboard.md');
-const TOL = 0.0015;
+const TOL = 0.001;
 
 /** ctx stub: planner inputs from the golden fixture instead of files and ffmpeg. */
 export function goldenCtx(sb, locale, fx) {

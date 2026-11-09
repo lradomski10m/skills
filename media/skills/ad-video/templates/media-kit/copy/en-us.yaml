@@ -1,0 +1,22 @@
+# Copy for en-us. The engine reads labels, clerk, endCard and text; the rest is for the skill.
+labels: { reject: REJECTED, approve: APPROVED }
+clerk: { reject: Rejected., approve: Approved. }
+endCard:
+  cta: Go to example.com          # must contain brand.url
+  ctaHint: link in bio ↓
+  copy: Done at home, in a minute.
+  stampAtPhrase: in a minute.     # classic style: the stamp lands at the end of this phrase
+  sheet:                          # real-sheet style only
+    tagline:
+      - Done at home,
+      - in a minute.
+    order: "ORDER #1"
+    qrUrl: https://example.com/
+text: {}                          # shared text keys, usable as { t: key } in every storyboard
+slogans: []
+claims:
+  allowed: []
+  banned: []
+hashtags: []
+postCaption: ""
+pinnedComment: ""

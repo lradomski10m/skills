@@ -1,5 +1,8 @@
 # Composition engine (spec)
 
+Status: implemented in media 0.2.0. As-built notes and deviations:
+`docs/design/2026-11-09-composition-engine.md`.
+
 Implements `docs/analysis/2026-11-08-composition-engine.md`. Target: plugin
 `media` 0.2.0. A video is **data** in the consuming project (a `storyboard.md` plus
 the YAML media kit). The engine ships generic primitives: segments, overlays,
@@ -73,6 +76,8 @@ An unresolved ref is `undefined`. It is an error only where a time is required a
 | `montage` | `clips[]` (+ per-clip `in`), `every` (beats), `maxSec`, `minSlice` | slices cut on beats |
 | `endcard` | `voSec`, `clerkSec`, `minDuration`, `sheet` timing, `stampAtSec` | today's `planEndCard` |
 | `hook` | `voSec`, `titleSec` | today's `planHook` (exports `hook.minFirstVoStart`) |
+| `clip` | `clip`, `in`, `out`, `speed`, `reverse`, freezes | one clip segment |
+| `none` | — | zero length (overlay-only items) |
 
 **Analysers** (cached by content hash): `action` / `settle` / `flash` on clips (today's
 `analyzeFrames`); `beats` on the music bed (onset envelope → tempo → beat grid,
@@ -89,7 +94,6 @@ params:                       # declared params: type, default, required, values
   clip:    { type: clip, required: true, doc: Continuous action clip }
   verdict: { type: enum, values: [reject, approve, none], default: reject }
 plan: { planner: reveal, args: { clip: $clip, beat: $beat, minVoStart: "first ? (global.hook.minFirstVoStart ?? 0) : 0" } }
-segments: []                  # extra segments (rare; planners emit their own)
 audio:    [ { vo: $vo.line, at: plan.voStart }, { sfx: thud, at: plan.stampAt, when: "$verdict == 'reject'" } ]
 overlays: [ { template: builtin:stamp, params: { verdict: $verdict }, from: plan.stampAt, to: end, place: { anchor: bottom, y: stampBottom } } ]
 effects:  [ { name: grey-wash, from: "end - 1.2", to: end } ]
@@ -97,6 +101,8 @@ exports:  { flash: plan.flashAt }   # → global.<shotId>.flash
 ```
 
 `$x` substitutes a param (whole value). `when:` is an expression; falsy drops the item.
+`each: <expr>` repeats an item per element of a list (`each` = the element), e.g. a hit
+on every montage cut (`each: plan.starts`).
 Param types: `clip`, `still`, `vo`, `sfx`, `music`, `kit` (a kit file), `text` (a
 `{t: key}` or literal), `number`, `bool`, `enum`, `time` (expression), `list`, `object`.
 
@@ -211,23 +217,24 @@ overlays:
 | `vignette` | `angle` | `vignette` |
 
 Transitions are effects centred on a cut (timing-neutral: segments never overlap):
-`cut` (none), `flash-cut` (white flash), `dip` (fade to black and back over `durSec`),
-`fade` (dip through the cut using a cross-dissolve of the edge frames), `whip`
+`cut` (none), `flash-cut` (white flash), `dip` / `dip-white` (fade to black/white and
+back over `durSec`), `whip`
 (horizontal motion blur + slide, `durSec`). Declared as `transition: { name, durSec }`
 on the incoming shot or in `cuts:`.
 
 Segment-level timing effects (not windows): `speed`, `ramp`, `reverse`, freezes, Ken Burns.
 
-Picture-in-picture: overlay kind `pip` with a `quad` in canvas pixels, or `quadIn: still`
-coordinates mapped through the still's cover scaling. Rendered as perspective warp
-plus a polygon alpha mask.
+Picture-in-picture: overlay kind `pip` with a `quad` in canvas pixels. Rendered as a
+perspective warp plus a polygon alpha mask. (As built: no `quadIn` mapping. Measure the
+quad on the 1080×1920 frame.)
 
 ## 9. hooks.mjs
 
 `media-kit/campaigns/<id>/hooks.mjs` (optional) may export:
 - `transform(timeline, ctx) → timeline` after layout (edit or add anything)
 - `effects: { name: (params, window) => ffmpegFilterString }`
-- `analysers: { name: async (file, ctx) => events }`
+- `analysers: { name: async (file, ctx) => events }` (as built: available to `transform`
+  through `ctx`, not yet as a storyboard-level analyser name)
 
 It is logged as `custom hook: <name>` and runs only for that campaign.
 
@@ -261,7 +268,8 @@ Removed: engine live generation (`FAL_KEY` / `ELEVENLABS_API_KEY` providers, cos
   frame-sequence interpolation, compose layout.
 - **A5 golden**: captured planning inputs (clip analyses, voice durations) for pl and
   en-us + the timelines rendered by 0.1.x → the new engine's timeline matches every
-  segment start, segment duration, audio event time and overlay window within 1 ms.
+  segment start, segment duration, audio event time and overlay window within 1 ms
+  (`test/golden.test.mjs`).
 - Integration (outside `npm test`): render A5 from a migrated kit copy; frame strips
   compared side by side with 0.1.x renders.
 

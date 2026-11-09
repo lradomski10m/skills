@@ -1,9 +1,0 @@
-{
-  "name": "Example",
-  "stampMark": "example",
-  "url": "example.com",
-  "icon": "icon.png",
-  "chip": null,
-  "font": null,
-  "endCard": { "style": "grid" }
-}

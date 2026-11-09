@@ -2,7 +2,8 @@
 
 The engine is provider-agnostic: it assembles files. Generation happens in the agent
 through MCP tools (or built-in tools). Record the project's choice in
-`media-kit/README.md` (or `media-kit/providers.json`).
+`providers:` in `media-kit/brand.yaml` (the skill reads it; the engine never calls a
+provider).
 
 | Job | Default | Alternatives |
 |---|---|---|

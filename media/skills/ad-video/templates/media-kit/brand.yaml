@@ -1,0 +1,31 @@
+# Brand identity for videos (read by the media engine). Paths are relative to media-kit/.
+name: Brand                 # wordmark on end cards
+stampMark: brand            # small text on stamps
+url: example.com            # shown in CTAs; must match copy.endCard.cta
+icon: brand/icon.png        # square app icon (brand bug, end card)
+chip: null                  # or { file: brand/chip.png, iconBox: { x, y, size } } — a screenshot of the real header
+font:                       # optional; templates load fonts from files only (Inter is bundled)
+  family: null              # e.g. "Brand Sans"
+  files: []                 # e.g. [brand/fonts/BrandSans-Regular.ttf, brand/fonts/BrandSans-Bold.ttf]
+endCard:
+  style: grid               # real-sheet | grid | grid-strip | tilted | classic
+colours:                    # take these from the product's real CSS tokens
+  accent: "#3a6fd8"
+  background: "#0d1117"
+  text: "#ffffff"
+  muted: "#a9b1c3"
+  rejected: "#b3121c"
+  approved: "#178a3a"
+  stampPaper: "rgba(250,247,240,0.92)"
+  panelFrom: "#2b4a8c"
+  panelTo: "#10182b"
+  panelMuted: "#c3cbe0"
+  sheet: "#9a9a9a"
+  cropMark: "#000000"
+  qrFinder: "#3a6fd8"
+  chipBg: "rgba(15,20,30,0.72)"
+providers:                  # read by the skill only (references/providers.md)
+  images: fal Nano Banana
+  video: fal FLUX 3 Max
+  voice: ElevenLabs
+  music: ElevenLabs Music

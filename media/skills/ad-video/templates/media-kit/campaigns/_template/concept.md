@@ -9,7 +9,7 @@
 - Hook:
 - Beats:
 - Payoff + CTA:
-- Shot types:
+- Patterns:
 
 ## Decisions log
 - <date> — <decision>

@@ -1,0 +1,17 @@
+# Voice cast per locale ("*" applies to every locale). Pick voices with the user, then fill voiceId.
+"*":
+  clerk:                    # optional one-word judgement voice
+    voiceId: null
+    modelId: eleven_v4
+    ifMissing: skip         # the render goes on without it
+en-us:
+  narrator:
+    voiceId: null           # ElevenLabs voice id (creative_list_voices)
+    voiceName: null
+    modelId: eleven_v4
+    designPrompt: Warm, friendly voice, early 30s, gently amused, close mic.
+  announcer:
+    voiceId: null
+    voiceName: null
+    modelId: eleven_v4
+    postSpeed: 1.2          # applied when the take is sped up
