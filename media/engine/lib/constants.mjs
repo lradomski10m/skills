@@ -37,16 +37,23 @@ export const WORK = Object.freeze({
 
 /** media-kit/ layout (the parts the engine reads). */
 export const KIT = Object.freeze({
-  BRAND_DIR: 'brand',
-  BRAND_FILE: 'brand.json',
-  COLOURS_FILE: 'colours.json',
-  FONTS_DIR: 'fonts',
-  CAST_FILE: path.join('voices', 'cast.json'),
+  BRAND_FILE: 'brand.yaml',
+  VOICES_FILE: 'voices.yaml',
   COPY_DIR: 'copy',
+  PRESETS_DIR: 'presets',
+  TEMPLATES_DIR: 'templates',
   CAMPAIGNS_DIR: 'campaigns',
-  /** cast.json / copy fallback key used for every locale. */
+  STORYBOARD: 'storyboard.md',
+  HOOKS: 'hooks.mjs',
+  /** voices.yaml key used for every locale. */
   ANY_LOCALE: '*',
 });
+
+/** Built-in presets and templates shipped with the engine. */
+export const BUILTIN_PRESETS_DIR = path.join(ENGINE_ROOT, 'presets');
+export const BUILTIN_TEMPLATES_DIR = path.join(ENGINE_ROOT, 'templates');
+/** Template names with this prefix are drawn in code (graphics.mjs), not from SVG. */
+export const BUILTIN_GRAPHIC = 'builtin:';
 
 /** Secrets file — outside any repo, never committed (override: MEDIA_SECRETS_FILE). */
 export const SECRETS_FILE = path.join(os.homedir(), '.config', 'media-skills.env');

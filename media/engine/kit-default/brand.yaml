@@ -1,0 +1,23 @@
+# Neutral built-in kit: used when a project has no media-kit/ (tests, first offline runs).
+name: Brand
+stampMark: brand
+url: example.com
+icon: icon.png
+chip: null
+endCard:
+  style: grid
+colours:
+  accent: "#3a6fd8"
+  background: "#0d1117"
+  text: "#ffffff"
+  muted: "#a9b1c3"
+  rejected: "#b3121c"
+  approved: "#178a3a"
+  stampPaper: "rgba(250,247,240,0.92)"
+  panelFrom: "#2b4a8c"
+  panelTo: "#10182b"
+  panelMuted: "#c3cbe0"
+  sheet: "#9a9a9a"
+  cropMark: "#000000"
+  qrFinder: "#3a6fd8"
+  chipBg: "rgba(15,20,30,0.72)"

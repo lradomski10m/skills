@@ -1,0 +1,319 @@
+{
+ "note": "Captured from a 0.1.x render (a5-zwierzaki-en-us.inputs). Planner inputs + expected timeline.",
+ "locale": "en-us",
+ "inputs": {
+  "shots": {
+   "quokka": {
+    "beat": "action",
+    "analysis": {
+     "durationSec": 7.041666666666667,
+     "frameCount": 169,
+     "fps": 24,
+     "flash": {
+      "found": false,
+      "reason": "no flash in first 1.5s (baseline luma 125.8)"
+     },
+     "flashes": [],
+     "strayFlashesSec": [],
+     "action": {
+      "found": true,
+      "frame": 165,
+      "t": 6.875,
+      "startT": 6.666666666666667,
+      "peakFrame": 168,
+      "peakT": 7,
+      "endT": 7,
+      "burst": 3.9422471788194446,
+      "floor": 1.9190538194444446,
+      "contrast": 2.054266086169852
+     },
+     "quietStartSec": 5.291666666666667
+    },
+    "lineSec": 3.84,
+    "quipSec": 3.44
+   },
+   "dog": {
+    "beat": "action",
+    "analysis": {
+     "durationSec": 7.041666666666667,
+     "frameCount": 169,
+     "fps": 24,
+     "flash": {
+      "found": false,
+      "reason": "no flash in first 1.5s (baseline luma 139.4)"
+     },
+     "flashes": [],
+     "strayFlashesSec": [],
+     "action": {
+      "found": true,
+      "frame": 137,
+      "t": 5.708333333333333,
+      "startT": 5.541666666666667,
+      "peakFrame": 141,
+      "peakT": 5.875,
+      "endT": 6.083333333333333,
+      "burst": 4.214346426504629,
+      "floor": 1.3487955729166665,
+      "contrast": 3.1245256962042287
+     },
+     "quietStartSec": 3.7916666666666665
+    },
+    "lineSec": 3.04,
+    "quipSec": 1.36
+   },
+   "cow": {
+    "beat": "action",
+    "analysis": {
+     "durationSec": 7.041666666666667,
+     "frameCount": 169,
+     "fps": 24,
+     "flash": {
+      "found": false,
+      "reason": "no flash in first 1.5s (baseline luma 127.5)"
+     },
+     "flashes": [],
+     "strayFlashesSec": [],
+     "action": {
+      "found": true,
+      "frame": 150,
+      "t": 6.25,
+      "startT": 5.541666666666667,
+      "peakFrame": 154,
+      "peakT": 6.416666666666667,
+      "endT": 6.625,
+      "burst": 11.495768229166666,
+      "floor": 1.6694878472222223,
+      "contrast": 6.885805277525022
+     },
+     "quietStartSec": 3.8333333333333335
+    },
+    "lineSec": 3.44,
+    "quipSec": 1.92
+   },
+   "chameleon": {
+    "beat": "settle",
+    "analysis": {
+     "durationSec": 7.041666666666667,
+     "frameCount": 169,
+     "fps": 24,
+     "flash": {
+      "found": false,
+      "reason": "no flash in first 1.5s (baseline luma 96.8)"
+     },
+     "flashes": [],
+     "strayFlashesSec": [],
+     "action": {
+      "found": true,
+      "mode": "settle",
+      "reliable": false,
+      "t": 6.7,
+      "startT": 6.7,
+      "peakT": 6.7,
+      "endT": 6.7,
+      "excess": 0.12,
+      "tailFloor": 0.239
+     },
+     "quietStartSec": 6.7
+    },
+    "lineSec": 2.88,
+    "quipSec": 2.88
+   }
+  },
+  "hookSec": 2.24,
+  "announcerSec": 5.008005
+ },
+ "expected": {
+  "totalSec": 32.397,
+  "segments": [
+   {
+    "id": "quokka",
+    "startSec": 0,
+    "durationSec": 9.688
+   },
+   {
+    "id": "dog",
+    "startSec": 9.688,
+    "durationSec": 5.142
+   },
+   {
+    "id": "cow",
+    "startSec": 14.83,
+    "durationSec": 5.773
+   },
+   {
+    "id": "chameleon",
+    "startSec": 20.603,
+    "durationSec": 5.986
+   },
+   {
+    "id": "end",
+    "startSec": 26.589,
+    "durationSec": 5.808
+   }
+  ],
+  "audio": [
+   {
+    "kind": "shutter",
+    "atSec": 6.061,
+    "durSec": null
+   },
+   {
+    "kind": "voice",
+    "atSec": 2.136,
+    "durSec": 3.491
+   },
+   {
+    "kind": "voice",
+    "atSec": 6.411,
+    "durSec": 3.127
+   },
+   {
+    "kind": "thud",
+    "atSec": 6.411,
+    "durSec": null
+   },
+   {
+    "kind": "whoosh",
+    "atSec": 9.568,
+    "durSec": null
+   },
+   {
+    "kind": "shutter",
+    "atSec": 13.093,
+    "durSec": null
+   },
+   {
+    "kind": "voice",
+    "atSec": 9.688,
+    "durSec": 2.764
+   },
+   {
+    "kind": "voice",
+    "atSec": 13.443,
+    "durSec": 1.236
+   },
+   {
+    "kind": "thud",
+    "atSec": 13.443,
+    "durSec": null
+   },
+   {
+    "kind": "whoosh",
+    "atSec": 14.71,
+    "durSec": null
+   },
+   {
+    "kind": "shutter",
+    "atSec": 18.357,
+    "durSec": null
+   },
+   {
+    "kind": "voice",
+    "atSec": 14.83,
+    "durSec": 3.127
+   },
+   {
+    "kind": "voice",
+    "atSec": 18.707,
+    "durSec": 1.745
+   },
+   {
+    "kind": "thud",
+    "atSec": 18.707,
+    "durSec": null
+   },
+   {
+    "kind": "whoosh",
+    "atSec": 20.483,
+    "durSec": null
+   },
+   {
+    "kind": "shutter",
+    "atSec": 23.321,
+    "durSec": null
+   },
+   {
+    "kind": "voice",
+    "atSec": 20.603,
+    "durSec": 2.618
+   },
+   {
+    "kind": "voice",
+    "atSec": 23.821,
+    "durSec": 2.618
+   },
+   {
+    "kind": "thud",
+    "atSec": 23.821,
+    "durSec": null
+   },
+   {
+    "kind": "whoosh",
+    "atSec": 26.469,
+    "durSec": null
+   },
+   {
+    "kind": "voice",
+    "atSec": 27.089,
+    "durSec": 5.008
+   },
+   {
+    "kind": "thud",
+    "atSec": 27.039,
+    "durSec": null
+   },
+   {
+    "kind": "ding",
+    "atSec": 27.339,
+    "durSec": null
+   },
+   {
+    "kind": "voice",
+    "atSec": 0,
+    "durSec": 2.036
+   }
+  ],
+  "overlays": [
+   {
+    "graphic": "hook",
+    "fromSec": 0,
+    "toSec": 2.336
+   },
+   {
+    "graphic": "brand-bug",
+    "fromSec": 0,
+    "toSec": 26.589
+   },
+   {
+    "graphic": "stamp-rejected",
+    "fromSec": 6.411,
+    "toSec": 9.688
+   },
+   {
+    "graphic": "stamp-rejected",
+    "fromSec": 13.443,
+    "toSec": 14.83
+   },
+   {
+    "graphic": "stamp-rejected",
+    "fromSec": 18.707,
+    "toSec": 20.603
+   },
+   {
+    "graphic": "stamp-rejected",
+    "fromSec": 23.821,
+    "toSec": 26.589
+   },
+   {
+    "graphic": "photo-sheet",
+    "fromSec": 26.589,
+    "toSec": 32.397
+   },
+   {
+    "graphic": "stamp-approved",
+    "fromSec": 27.039,
+    "toSec": 32.397
+   }
+  ]
+ }
+}
