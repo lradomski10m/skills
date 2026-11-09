@@ -1,8 +1,0 @@
-{
-  "extends": "pl.json",
-  "id": "animals-warmup-pl",
-  "title": "Example warm-up \u2014 first shot + end card",
-  "shots": [
-    "quokka"
-  ]
-}

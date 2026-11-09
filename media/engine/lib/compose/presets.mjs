@@ -13,7 +13,7 @@ import { fencedBlocks, parseYamlAt, problem, sections, SourceError, splitFrontMa
 export const PARAM_TYPES = Object.freeze(['clip', 'still', 'vo', 'sfx', 'music', 'kit', 'text', 'number', 'bool', 'enum', 'time', 'list', 'object', 'any']);
 /** Keys a shot may set besides its preset's params. */
 export const SHOT_KEYS = Object.freeze(['preset', 'transition', 'audio', 'overlays', 'effects', 'notes']);
-const BODY_KEYS = Object.freeze(['params', 'plan', 'segments', 'audio', 'overlays', 'effects', 'exports', 'review']);
+const BODY_KEYS = Object.freeze(['params', 'plan', 'audio', 'overlays', 'effects', 'exports']);
 
 function parsePresetFile(file, problems) {
   const text = fs.readFileSync(file, 'utf8');
