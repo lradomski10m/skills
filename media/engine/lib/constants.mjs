@@ -4,7 +4,6 @@
 
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import os from 'node:os';
 
 export const ENGINE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** Bundled OFL fonts (Inter) — the default text face on every OS. */
@@ -55,23 +54,15 @@ export const BUILTIN_TEMPLATES_DIR = path.join(ENGINE_ROOT, 'templates');
 /** Template names with this prefix are drawn in code (graphics.mjs), not from SVG. */
 export const BUILTIN_GRAPHIC = 'builtin:';
 
-/** Secrets file — outside any repo, never committed (override: MEDIA_SECRETS_FILE). */
-export const SECRETS_FILE = path.join(os.homedir(), '.config', 'media-skills.env');
 /** Homebrew's keg-only ffmpeg build that includes libass (preferred when present). */
 export const FFMPEG_FULL_BIN_DIR = '/opt/homebrew/opt/ffmpeg-full/bin';
 
 export const ENV = Object.freeze({
-  FAL_KEY: 'FAL_KEY',
-  ELEVENLABS_API_KEY: 'ELEVENLABS_API_KEY',
   FFMPEG: 'MEDIA_FFMPEG',
   FFPROBE: 'MEDIA_FFPROBE',
   KIT: 'MEDIA_KIT',
   WORK: 'MEDIA_WORK',
-  SECRETS_FILE: 'MEDIA_SECRETS_FILE',
 });
-
-/** Brand bug: the kit's chip image (e.g. a website-header screenshot), else a drawn pill. */
-export const BRAND_SOURCE = Object.freeze({ CHIP: 'chip', DRAWN: 'drawn' });
 
 /**
  * End-card styles. `grid*` and `real-sheet` show the 2×2 grid of "perfect"
@@ -85,13 +76,6 @@ export const END_CARD_STYLE = Object.freeze({
   CLASSIC: 'classic',
 });
 
-/** Ordered pipeline stages. `--stage=<name>` stops after that stage. */
-export const STAGES = Object.freeze(['stills', 'clips', 'voice', 'analyze', 'render']);
-export const STAGE = Object.freeze(Object.fromEntries(STAGES.map((s) => [s.toUpperCase(), s])));
-
-/** Cache namespaces beyond the pipeline stages. */
-export const CACHE_STAGE = Object.freeze({ TTS: 'tts', SFX: 'sfx', ACTION: 'action', VO_TEMPO: 'vo-tempo' });
-
 /** Flash source for result shots: the clip's own flash if any, else synthetic; or always synthetic. */
 export const FLASH_MODE = Object.freeze({ AUTO: 'auto', SYNTHETIC: 'synthetic' });
 
@@ -99,16 +83,7 @@ export const FLASH_MODE = Object.freeze({ AUTO: 'auto', SYNTHETIC: 'synthetic' }
 export const BEAT_MODE = Object.freeze({ ACTION: 'action', SETTLE: 'settle' });
 
 export const VERDICT = Object.freeze({ REJECTED: 'rejected', APPROVED: 'approved' });
-export const VERDICTS = Object.freeze(Object.values(VERDICT));
-
 export const SHOT_STATUS = Object.freeze({ OK: 'ok', FAILED: 'failed' });
-
-export const VOICE_ROLE = Object.freeze({ NARRATOR: 'narrator', CLERK: 'clerk', ANNOUNCER: 'announcer' });
-/** Roles every spec must define; others (announcer) are needed only when used. */
-export const REQUIRED_VOICE_ROLES = Object.freeze([VOICE_ROLE.NARRATOR, VOICE_ROLE.CLERK]);
-
-/** What to do when a voice has no id (live) / no provided file (--inputs). */
-export const IF_MISSING = Object.freeze({ OFFLINE: 'offline', SKIP: 'skip' });
 
 /**
  * Inputs inside media-work/<campaign>/ (see WORK). Files are dropped in by
@@ -144,18 +119,6 @@ export const SFX = Object.freeze({ THUD: 'thud', DING: 'ding', SHUTTER: 'shutter
 /** What plays before an animal clip. */
 export const INTRO_KIND = Object.freeze({ STILL: 'still', CLIP: 'clip' });
 
-export const FAL = Object.freeze({
-  QUEUE_BASE: 'https://queue.fal.run',
-  AUTH_SCHEME: 'Key',
-  STATUS: Object.freeze({ IN_QUEUE: 'IN_QUEUE', IN_PROGRESS: 'IN_PROGRESS', COMPLETED: 'COMPLETED' }),
-});
-
-export const ELEVENLABS = Object.freeze({
-  API_BASE: 'https://api.elevenlabs.io/v1',
-  AUTH_HEADER: 'xi-api-key',
-  TTS_TIMESTAMPS_PATH: (voiceId) => `/text-to-speech/${encodeURIComponent(voiceId)}/with-timestamps`,
-});
-
 export const OFFLINE = Object.freeze({
   /** macOS `say` voices for --offline stand-in VO (absent `say` → silent stand-ins). */
   SAY_VOICE_BY_LOCALE: Object.freeze({ pl: 'Zosia', 'en-us': 'Samantha', 'en-gb': 'Daniel', de: 'Anna', fr: 'Thomas', es: 'Mónica' }),
@@ -180,7 +143,7 @@ export const FILE = Object.freeze({
 });
 
 /** Where a run's media came from (also the run-name suffix). */
-export const PROVIDER = Object.freeze({ LIVE: 'live', OFFLINE: 'offline', INPUTS: 'inputs' });
+export const PROVIDER = Object.freeze({ OFFLINE: 'offline', INPUTS: 'inputs' });
 
 /** `ingest --as <kind>:<target>` roles → inputs layout. `music` takes no target. */
 export const INGEST_KIND = Object.freeze({
@@ -200,14 +163,15 @@ export const CLI = Object.freeze({
   COMMAND_INGEST: 'ingest',
   COMMAND_REVIEW: 'review',
   COMMAND_DOCTOR: 'doctor',
+  COMMAND_PLAN: 'plan',
+  COMMAND_SPEND: 'spend',
+  COMMAND_PRESETS: 'presets',
+  COMMAND_MIGRATE: 'migrate-kit',
   COMMAND_HELP: 'help',
   FLAG: Object.freeze({
     ONLY: 'only',
-    STAGE: 'stage',
     DRY_RUN: 'dry-run',
     OFFLINE: 'offline',
-    MAX_COST: 'max-cost',
-    REROLL: 'reroll',
     INPUTS: 'inputs',
     AS: 'as',
     LOCALE: 'locale',
@@ -218,25 +182,3 @@ export const CLI = Object.freeze({
   }),
 });
 
-/**
- * Keys every locale must end up with — the missing-text check — after the
- * kit's defaults (copy/<locale>.json, voices/cast.json) are applied under the
- * campaign's locale overlay. Per shot: LOCALE_SHOT_KEYS under `shots.<id>`.
- */
-export const LOCALE_KEYS = Object.freeze([
-  'id',
-  'locale',
-  'voices.narrator',
-  'labels.rejected',
-  'labels.approved',
-  'clerkLines.rejected',
-  'clerkLines.approved',
-  'hook.text',
-  'endCard.copy',
-  'endCard.cta',
-  'endCard.ctaHint',
-  'endCard.announcer',
-]);
-/** Extra keys for the `real-sheet` end card (its brand panel). */
-export const SHEET_LOCALE_KEYS = Object.freeze(['endCard.sheet.tagline', 'endCard.sheet.order', 'endCard.sheet.qrUrl']);
-export const LOCALE_SHOT_KEYS = Object.freeze(['caption', 'vo.line']);

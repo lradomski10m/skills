@@ -6,14 +6,14 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { ENGINE_ROOT, ENV, FONTS_DIR, KIT, SECRETS_FILE } from './constants.mjs';
+import { ENGINE_ROOT, FONTS_DIR, KIT } from './constants.mjs';
 import { CONFIG } from './config.mjs';
 import { ffmpegBin, ffprobeBin, REQUIRED_FILTERS } from './media/ffmpeg.mjs';
 
 export const STATUS = Object.freeze({ OK: 'ok', FAIL: 'fail', WARN: 'warn', INFO: 'info' });
 const MIN_NODE_MAJOR = 22;
 const REQUIRED_ENCODERS = Object.freeze(['libx264', 'aac', 'libmp3lame']);
-const DEPS = Object.freeze(['sharp', 'qrcode']);
+const DEPS = Object.freeze(['sharp', 'qrcode', 'yaml', '@resvg/resvg-js']);
 
 /** Per-OS install hints for ffmpeg with libass. Pure. */
 export function ffmpegHint(platform = process.platform) {
@@ -73,11 +73,11 @@ function checkFonts(kit) {
   const bundled = fs.existsSync(path.join(FONTS_DIR, file));
   const out = [bundled ? check('bundled font', STATUS.OK, `${CONFIG.typography.family} (${FONTS_DIR})`) : check('bundled font', STATUS.FAIL, `missing ${file}`, 'reinstall the plugin')];
   if (kit?.fontFamily) {
-    const hasFiles = kit.fontDirs.some((d) => fs.existsSync(d) && fs.readdirSync(d).some((f) => /\.(ttf|otf)$/i.test(f)));
+    const hasFiles = kit.fontDirs.length > 0;
     out.push(
       hasFiles
         ? check('kit font', STATUS.OK, kit.fontFamily)
-        : check('kit font', STATUS.WARN, `brand.json names "${kit.fontFamily}" but brand/${KIT.FONTS_DIR}/ has no .ttf/.otf`, `add the font files (licence permitting) or remove font from brand.json`),
+        : check('kit font', STATUS.WARN, `brand.yaml names "${kit.fontFamily}" but lists no font.files`, 'add font.files (licence permitting) — templates only use fonts loaded from files'),
     );
   }
   return out;
@@ -87,17 +87,14 @@ function checkKit(kitRoot, kit) {
   if (!kit || kit.isDefault) {
     return [check('media kit', STATUS.WARN, `none at ${kitRoot} — using the neutral built-in kit`, 'the skill creates one (phase 2: media kit); or pass --kit=<dir> / set MEDIA_KIT')];
   }
-  const parts = [
-    ['brand/brand.json', true],
-    ['brand/colours.json', fs.existsSync(path.join(kitRoot, KIT.BRAND_DIR, KIT.COLOURS_FILE))],
-    ['voices/cast.json', fs.existsSync(path.join(kitRoot, KIT.CAST_FILE))],
-    ['copy/', fs.existsSync(path.join(kitRoot, KIT.COPY_DIR))],
-    ['campaigns/', fs.existsSync(path.join(kitRoot, KIT.CAMPAIGNS_DIR))],
-  ];
-  const absent = parts.filter(([, ok]) => !ok).map(([p]) => p);
+  const has = (rel) => fs.existsSync(path.join(kitRoot, rel));
+  const parts = [KIT.VOICES_FILE, KIT.COPY_DIR, KIT.CAMPAIGNS_DIR];
+  const absent = parts.filter((p) => !has(p));
+  const campaigns = has(KIT.CAMPAIGNS_DIR) ? fs.readdirSync(path.join(kitRoot, KIT.CAMPAIGNS_DIR)).filter((d) => has(path.join(KIT.CAMPAIGNS_DIR, d, KIT.STORYBOARD))) : [];
   return [
     check('media kit', STATUS.OK, `${kitRoot} (${kit.name ?? 'unnamed'})`),
     check('brand icon', fs.existsSync(kit.iconFile) ? STATUS.OK : STATUS.FAIL, kit.iconFile),
+    check('campaigns', campaigns.length ? STATUS.OK : STATUS.INFO, campaigns.length ? campaigns.join(', ') : 'none yet (media-kit/campaigns/<id>/storyboard.md)'),
     ...(absent.length ? [check('kit parts', STATUS.WARN, `not yet: ${absent.join(', ')}`, 'fine to grow over time — the skill adds what a campaign needs')] : []),
   ];
 }
@@ -116,13 +113,8 @@ function checkWork(workRoot) {
 }
 
 function checkOptional() {
-  const secretsFile = process.env[ENV.SECRETS_FILE] || SECRETS_FILE;
-  const keys = [ENV.FAL_KEY, ENV.ELEVENLABS_API_KEY].filter((k) => process.env[k] || (fs.existsSync(secretsFile) && fs.readFileSync(secretsFile, 'utf8').includes(`${k}=`)));
   const say = process.platform === 'darwin' && !spawnSync('say', ['-v', '?'], { encoding: 'utf8' }).error;
-  return [
-    check('API keys (engine live mode only)', STATUS.INFO, keys.length ? `found ${keys.join(', ')}` : `none — fine: generation runs through the fal / ElevenLabs MCP tools and the engine assembles with --inputs`),
-    check('offline voice', STATUS.INFO, say ? 'macOS `say` (stand-in VO for --offline)' : '--offline uses silent stand-in VO (no `say` on this OS)'),
-  ];
+  return [check('offline voice', STATUS.INFO, say ? 'macOS `say` (stand-in VO for --offline and missing lines)' : 'silent stand-in VO (no `say` on this OS)')];
 }
 
 /** Run every local check. `kit` is the loaded kit (or null). */

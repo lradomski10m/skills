@@ -307,8 +307,15 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
   }
   (front.overlays ?? []).forEach((o, i) => pushOverlay(globalItem, { index: 0, count: 1 }, o, ['overlays', i]));
   if (problems.length) throw new SourceError(problems);
+  const assetsOf = (item) =>
+    Object.fromEntries(
+      Object.entries(item.resolved ?? {})
+        .filter(([, v]) => v && typeof v === 'object' && typeof v.file === 'string')
+        .map(([k, v]) => [k, { file: v.file, key: v.key ?? null, standIn: Boolean(v.standIn) }]),
+    );
   return {
     totalSec: globals.total,
+    shots: laid.map((it) => ({ id: it.shot.id, title: it.shot.title, preset: it.preset.name, startSec: r3(it.start), endSec: r3(it.start + it.plan.durationSec), assets: assetsOf(it) })),
     segments,
     audio,
     overlays,

@@ -316,6 +316,33 @@ export const CONFIG = Object.freeze({
     }),
   }),
 
+  /**
+   * Effect defaults (overridable per effect via `params`). See compose/effects.mjs and
+   * the spec §8. Windows are global times; transitions are centred on a cut.
+   */
+  effects: Object.freeze({
+    greyWash: Object.freeze({ rampSec: 0.4, saturation: 0, darken: 0.12 }),
+    shake: Object.freeze({ amp: 12, freq: 7 }),
+    zoomPunch: Object.freeze({ amount: 0.12, attackSec: 0.06, releaseSec: 0.3 }),
+    cctv: Object.freeze({ saturation: 0.15, noise: 22, vignette: 'PI/4', fps: 12 }),
+    vhs: Object.freeze({ shift: 5, noise: 14, saturation: 1.25, blur: 0.7 }),
+  }),
+
+  /**
+   * Named overlay areas for templates (`place: { area: … }`): x/y may be ffmpeg overlay
+   * expressions (overlay_w/main_w). Margins keep HUD elements inside the safe area.
+   */
+  areas: Object.freeze({
+    full: Object.freeze({ anchor: 'full', y: 0 }),
+    center: Object.freeze({ anchor: 'center', y: 960 }),
+    'top-band': Object.freeze({ anchor: 'top', y: 268 }),
+    'bottom-band': Object.freeze({ anchor: 'bottom', y: 1500 }),
+    'hud-top-left': Object.freeze({ anchor: 'top', x: '56', y: 268 }),
+    'hud-top-right': Object.freeze({ anchor: 'top', x: 'main_w-overlay_w-56', y: 268 }),
+    'hud-bottom-left': Object.freeze({ anchor: 'bottom', x: '56', y: 1500 }),
+    'hud-bottom-right': Object.freeze({ anchor: 'bottom', x: 'main_w-overlay_w-56', y: 1500 }),
+  }),
+
   /** Spoken hook (spec hook.vo): starts at voStartSec; the first rule line starts ≥ voGapSec after it ends. */
   hook: Object.freeze({ voStartSec: 0.2, voGapSec: 0.25, titleTailSec: 0.3 }),
 

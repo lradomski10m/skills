@@ -7,7 +7,10 @@ import path from 'node:path';
 import { CONFIG } from './config.mjs';
 import { BUS, FILE, INTRO_KIND, SFX } from './constants.mjs';
 import { durationSec, ffmpeg, probe } from './media/ffmpeg.mjs';
-import { ANCHOR, GRAPHIC } from './timeline.mjs';
+import { effectsGraph, pipChain } from './compose/effects.mjs';
+
+/** How an overlay's `y` is read: its top edge, its centre, or a full-frame overlay at 0,0. */
+export const ANCHOR = Object.freeze({ TOP: 'top', CENTER: 'center', BOTTOM: 'bottom', FULL: 'full' });
 
 const R = CONFIG.render;
 const FONTS_SUBDIR = 'fonts';
@@ -187,11 +190,54 @@ export function loopedClipSegmentArgs(clipFile, durationSec, outFile) {
   ];
 }
 
+/**
+ * A clip segment: in/out, speed (or reverse), held first/last frames, normalised to the
+ * frame and trimmed to the planned duration. `loop` repeats a short clip. Pure.
+ */
+export function clipSegmentArgs(seg, outFile) {
+  const speed = seg.speed ?? 1;
+  const out = seg.outSec != null ? `:end=${fmt(seg.outSec)}` : '';
+  const chain =
+    `[0:v]trim=start=${fmt(seg.inSec ?? 0)}${out},setpts=(PTS-STARTPTS)/${fmt(speed)}${seg.reverse ? ',reverse' : ''},${normalizeVideo()},` +
+    `tpad=start_duration=${fmt(seg.freezeHeadSec ?? 0)}:start_mode=clone:stop_duration=${fmt((seg.freezeTailSec ?? 0) + PAD_SLACK_SEC)}:stop_mode=clone,` +
+    `trim=duration=${fmt(seg.durationSec)},setpts=PTS-STARTPTS[v]`;
+  return [...(seg.loop ? ['-stream_loop', '-1'] : []), '-i', seg.file, '-filter_complex', chain, '-map', '[v]', '-an', ...videoEncodeArgs(), outFile];
+}
+
+/** A still (photo or drawn graphic) as video, with an optional Ken Burns move. Pure. */
+export function stillKenBurnsArgs(file, durationSec, kb, outFile) {
+  if (!kb) return stillSegmentArgs(file, durationSec, outFile);
+  const frames = Math.max(1, Math.round(durationSec * R.fps));
+  const f = { scale: 1, x: 0.5, y: 0.5, ...kb.from };
+  const t = { scale: 1.08, x: 0.5, y: 0.5, ...kb.to };
+  const lerp = (a, b) => `(${a}+(${b}-${a})*on/${Math.max(1, frames - 1)})`;
+  const chain =
+    `[0:v]scale=${R.width * 2}:${R.height * 2}:force_original_aspect_ratio=increase:flags=lanczos,crop=${R.width * 2}:${R.height * 2},` +
+    `zoompan=z='${lerp(f.scale, t.scale)}':x='(iw-iw/zoom)*${lerp(f.x, t.x)}':y='(ih-ih/zoom)*${lerp(f.y, t.y)}':d=${frames}:s=${R.width}x${R.height}:fps=${R.fps},setsar=1,format=yuv420p[v]`;
+  return ['-loop', '1', '-t', fmt(durationSec + PAD_SLACK_SEC), '-i', file, '-filter_complex', chain, '-map', '[v]', '-an', '-t', fmt(durationSec), ...videoEncodeArgs(), outFile];
+}
+
+/** A solid colour segment. Pure. */
+export function colorSegmentArgs(color, durationSec, outFile) {
+  return ['-f', 'lavfi', '-i', `color=c=${color}:s=${R.width}x${R.height}:r=${R.fps}:d=${fmt(durationSec)}`, '-vf', 'format=yuv420p', '-an', ...videoEncodeArgs(), outFile];
+}
+
 /** Segment-encode argv for any timeline segment. */
-export function segmentArgs(seg, graphicFile, outFile, { clipAspect, introClipDur } = {}) {
-  if (seg.kind === 'shot') return shotSegmentArgs(seg.plan, seg.clipFile, outFile, { intro: seg.intro, result: seg.result, clipAspect, introClipDur });
-  if (seg.backgroundClip) return loopedClipSegmentArgs(seg.backgroundClip, seg.durationSec, outFile);
-  return stillSegmentArgs(graphicFile(GRAPHIC.ENDCARD_BASE), seg.durationSec, outFile);
+export function segmentArgs(seg, outFile, { clipAspect, introClipDur } = {}) {
+  switch (seg.kind) {
+    case 'planned':
+      return shotSegmentArgs(seg.plan, seg.clipFile, outFile, { intro: seg.intro, result: seg.result, clipAspect, introClipDur });
+    case 'card':
+      return seg.backgroundClip ? loopedClipSegmentArgs(seg.backgroundClip, seg.durationSec, outFile) : stillSegmentArgs(seg.graphicFile, seg.durationSec, outFile);
+    case 'clip':
+      return clipSegmentArgs(seg, outFile);
+    case 'still':
+      return stillKenBurnsArgs(seg.file, seg.durationSec, seg.kenBurns, outFile);
+    case 'color':
+      return colorSegmentArgs(seg.color, seg.durationSec, outFile);
+    default:
+      throw new Error(`unknown segment kind ${seg.kind}`);
+  }
 }
 
 export const concatList = (files) => `${files.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join('\n')}\n`;
@@ -211,48 +257,69 @@ export function musicDuckExpr(windows, { duckDb, attackSec, releaseSec }) {
 }
 
 /**
- * Final pass: inputs are [0] base video, then one looped PNG per overlay, then
- * one input per audio event, then the optional looped music bed.
- * @param {{overlays: object[], audio: object[], totalSec: number}} tl
- * @param {{graphicFile: (key: string) => string, captionsFile: string|null, music?: {file: string, gainDb: number, duckDb: number, windows: {fromSec: number, toSec: number}[], attackSec: number, releaseSec: number, fadeOutSec: number}|null}} files
+ * Final pass: inputs are [0] base video, then one input per overlay (looped PNG,
+ * PNG frame sequence, or a PiP clip + its mask), then one per audio event, then the
+ * optional looped music bed. Effects run on the base before the overlays.
+ * @param {{overlays: object[], audio: object[], effects?: object[], totalSec: number}} tl
  */
-export function finalPassArgs(tl, { graphicFile, captionsFile, music = null }, outFile) {
+export function finalPassArgs(tl, { captionsFile, music = null, customEffects = {} }, outFile) {
   const inputs = [];
   const graph = [];
   const total = fmt(tl.totalSec);
+  let n = 1;
+  const add = (...args) => {
+    inputs.push(...args);
+    return n++;
+  };
 
-  // Video: overlays chained on the base, then captions (libass).
-  let v = '0:v';
-  tl.overlays.forEach((o, k) => {
-    const idx = k + 1;
-    inputs.push('-loop', '1', '-t', total, '-i', graphicFile(o.graphic));
-    const x = o.anchor === ANCHOR.FULL ? '0' : o.x !== undefined ? `${o.x}` : `(main_w-overlay_w)/2${o.dx ? `+${o.dx}` : ''}`;
-    let y = { [ANCHOR.FULL]: '0', [ANCHOR.TOP]: `${o.y}`, [ANCHOR.CENTER]: `${o.y}-overlay_h/2`, [ANCHOR.BOTTOM]: `${o.y}-overlay_h` }[o.anchor];
-    if (y === undefined) throw new Error(`overlay ${o.graphic}: unknown anchor ${o.anchor}`);
-    // Entrance animation: alpha fade on the input, ease-out (quadratic) slide on the overlay position.
-    let src = `${idx}:v`;
+  // Video: effects on the base, then overlays (z order, then timeline order), then captions.
+  graph.push(effectsGraph(tl.effects ?? [], '0:v', 'fx', customEffects));
+  let v = 'fx';
+  const ordered = [...tl.overlays].map((o, i) => ({ o, i })).sort((a, b) => (a.o.z ?? 0) - (b.o.z ?? 0) || a.i - b.i);
+  ordered.forEach(({ o }, k) => {
+    if (o.kind === 'pip') {
+      const clipIdx = add('-stream_loop', '-1', '-i', o.clip);
+      const maskIdx = add('-loop', '1', '-t', total, '-i', o.mask);
+      graph.push(pipChain(o, clipIdx, maskIdx, `pp${k}`));
+      graph.push(`[${v}][pp${k}]overlay=x=0:y=0:eof_action=pass:enable='between(t,${fmt(o.fromSec)},${fmt(o.toSec)})'[ov${k}]`);
+      v = `ov${k}`;
+      return;
+    }
+    const place = { ...(o.place?.area ? CONFIG.areas[o.place.area] : {}), ...o.place };
+    let src;
+    if (o.sequence) {
+      const idx = add('-framerate', String(o.sequence.fps), '-i', `${o.sequence.dir}/%05d.png`);
+      graph.push(`[${idx}:v]format=rgba,setpts=PTS-STARTPTS+${fmt(o.fromSec)}/TB[sq${k}]`);
+      src = `sq${k}`;
+    } else {
+      src = `${add('-loop', '1', '-t', total, '-i', o.file)}:v`;
+    }
+    const anchor = place.anchor ?? ANCHOR.TOP;
+    const x = anchor === ANCHOR.FULL ? '0' : place.x !== undefined ? `${place.x}` : `(main_w-overlay_w)/2${place.dx ? `+${place.dx}` : ''}`;
+    let y = { [ANCHOR.FULL]: '0', [ANCHOR.TOP]: `${place.y ?? 0}`, [ANCHOR.CENTER]: `${place.y ?? 960}-overlay_h/2`, [ANCHOR.BOTTOM]: `${place.y ?? 1920}-overlay_h` }[anchor];
+    if (y === undefined) throw new Error(`overlay ${o.graphic}: unknown anchor ${anchor}`);
     if (o.fadeIn) {
-      graph.push(`[${idx}:v]format=rgba,fade=t=in:st=${fmt(o.fadeIn.startSec)}:d=${fmt(o.fadeIn.durSec)}:alpha=1[fi${k}]`);
+      graph.push(`[${src}]format=rgba,fade=t=in:st=${fmt(o.fadeIn.startSec)}:d=${fmt(o.fadeIn.durSec)}:alpha=1[fi${k}]`);
       src = `fi${k}`;
     }
     if (o.slide) {
       const { startSec, durSec, dyPx } = o.slide;
       y = `'${y}+${dyPx}*pow(max(0,1-(t-${fmt(startSec)})/${fmt(durSec)}),2)'`;
     }
-    graph.push(`[${v}][${src}]overlay=x=${x}:y=${y}:enable='between(t,${fmt(o.fromSec)},${fmt(o.toSec)})'[ov${k}]`);
+    graph.push(`[${v}][${src}]overlay=x=${x}:y=${y}:eof_action=pass:enable='between(t,${fmt(o.fromSec)},${fmt(o.toSec)})'[ov${k}]`);
     v = `ov${k}`;
   });
   const subtitles = captionsFile ? `subtitles=filename=${captionsFile}:fontsdir=${FONTS_SUBDIR},` : '';
   graph.push(`[${v}]${subtitles}format=yuv420p[vout]`);
 
   // Audio: each event delayed onto the timeline, summed per bus.
-  const audioBase = 1 + tl.overlays.length;
   const busLabels = { [BUS.VOICE]: [], [BUS.SFX]: [] };
   tl.audio.forEach((a, k) => {
-    inputs.push('-i', a.file);
+    const idx = add('-i', a.file);
     const ms = Math.round(a.atSec * 1000);
+    const trim = a.inSec || a.durSec ? `atrim=start=${fmt(a.inSec ?? 0)}${a.durSec ? `:duration=${fmt(a.durSec)}` : ''},asetpts=PTS-STARTPTS,` : '';
     graph.push(
-      `[${audioBase + k}:a]aresample=${R.audioRate},aformat=sample_fmts=fltp:channel_layouts=stereo,` +
+      `[${idx}:a]${a.bus === BUS.VOICE && a.label === 'dialogue' ? trim : ''}aresample=${R.audioRate},aformat=sample_fmts=fltp:channel_layouts=stereo,` +
         `volume=${a.gain},adelay=${ms}:all=1[a${k}]`,
     );
     busLabels[a.bus].push(`[a${k}]`);
@@ -267,8 +334,7 @@ export function finalPassArgs(tl, { graphicFile, captionsFile, music = null }, o
   const mixInputs = [`[${BUS.VOICE}]`, `[${BUS.SFX}]`];
   if (music) {
     // Looped bed: level against the voice, duck under every VO window, fade out with the video.
-    inputs.push('-stream_loop', '-1', '-i', music.file);
-    const musicIdx = audioBase + tl.audio.length;
+    const musicIdx = add('-stream_loop', '-1', '-i', music.file);
     const fadeSt = fmt(Math.max(0, tl.totalSec - music.fadeOutSec));
     graph.push(
       `[${musicIdx}:a]aresample=${R.audioRate},aformat=sample_fmts=fltp:channel_layouts=stereo,atrim=duration=${total},` +
@@ -343,11 +409,11 @@ export function sfxArgs(kind, outFile) {
   throw new Error(`unknown sfx ${kind}`);
 }
 
-/** Run the three render passes inside `runDir` (relative paths keep filter escaping trivial). */
-export async function renderVideo({ tl, runDir, graphicFile, captionsAss, font, music, outFile, log }) {
+/** Run the render passes inside `runDir`: per-segment encode → concat → final pass. */
+export async function renderVideo({ tl, runDir, captionsAss, font, music, outFile, customEffects, log }) {
   const segDir = path.join(runDir, 'segments');
   await fs.mkdir(segDir, { recursive: true });
-  // Burned-in captions are optional (spec `captions`); libass needs the font next to the ASS file.
+  // Burned-in captions are optional (storyboard `captions`); libass needs the font next to the ASS file.
   if (captionsAss) {
     await fs.mkdir(path.join(runDir, FONTS_SUBDIR), { recursive: true });
     const fontCopy = path.join(runDir, FONTS_SUBDIR, path.basename(font.file));
@@ -358,15 +424,15 @@ export async function renderVideo({ tl, runDir, graphicFile, captionsAss, font, 
 
   const segFiles = [];
   for (const [i, seg] of tl.segments.entries()) {
-    const out = path.join(segDir, `${String(i).padStart(2, '0')}-${seg.kind === 'shot' ? seg.shotId : 'endcard'}.mp4`);
+    const out = path.join(segDir, `${String(i).padStart(2, '0')}-${seg.id}.mp4`);
     log(`render segment ${path.basename(out)}`);
-    const clipAspect = seg.intro || seg.result ? await videoAspect(seg.clipFile) : undefined;
+    const clipAspect = seg.kind === 'planned' && (seg.intro || seg.result) ? await videoAspect(seg.clipFile) : undefined;
     const introClipDur = seg.intro?.kind === INTRO_KIND.CLIP ? await durationSec(seg.intro.file) : undefined;
-    await ffmpeg(segmentArgs(seg, graphicFile, out, { clipAspect, introClipDur }));
+    await ffmpeg(segmentArgs(seg, out, { clipAspect, introClipDur }));
     segFiles.push(out);
   }
   await fs.writeFile(path.join(runDir, FILE.CONCAT_LIST), concatList(segFiles));
   await ffmpeg(['-f', 'concat', '-safe', '0', '-i', FILE.CONCAT_LIST, '-c', 'copy', FILE.BASE_VIDEO], { cwd: runDir });
-  log(`render final pass (overlays${captionsAss ? ', captions' : ''}, audio mix)`);
-  await ffmpeg(finalPassArgs(tl, { graphicFile, captionsFile: captionsAss ? FILE.CAPTIONS : null, music }, outFile), { cwd: runDir });
+  log(`render final pass (${tl.effects?.length ? 'effects, ' : ''}overlays${captionsAss ? ', captions' : ''}, audio mix)`);
+  await ffmpeg(finalPassArgs(tl, { captionsFile: captionsAss ? FILE.CAPTIONS : null, music, customEffects }, outFile), { cwd: runDir });
 }
