@@ -1,0 +1,22 @@
+{
+  "name": "@lradomski/media-skills",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Engine for the media plugin's skills: spec-driven short-form 9:16 video ad assembly (ffmpeg + sharp).",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "ad-video": "./engine/cli.mjs"
+  },
+  "scripts": {
+    "test": "node --test \"engine/test/*.test.mjs\"",
+    "doctor": "node engine/cli.mjs doctor"
+  },
+  "dependencies": {
+    "qrcode": "1.5.4",
+    "sharp": "0.34.5"
+  }
+}

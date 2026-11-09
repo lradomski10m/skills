@@ -1,0 +1,21 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "media",
+  "displayName": "Media",
+  "version": "0.1.0",
+  "description": "Short-form media skills. ad-video: ideate, build a media kit, generate and assemble localized 9:16 promo videos for any product.",
+  "logo": "assets/logo.png",
+  "suggestedPrompts": [
+    "Plan a short video ad for my product",
+    "Set up a media kit for this project",
+    "Localize my video ad into another language"
+  ],
+  "author": {
+    "name": "Luke Radomski",
+    "url": "https://github.com/lradomski10m"
+  },
+  "homepage": "https://github.com/lradomski10m/skills/tree/main/media",
+  "repository": "https://github.com/lradomski10m/skills",
+  "license": "MIT",
+  "keywords": ["video", "ads", "short-form", "localization"]
+}

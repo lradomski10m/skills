@@ -1,0 +1,25 @@
+{
+  "name": "media",
+  "displayName": "Media",
+  "version": "0.1.0",
+  "description": "Short-form media production skills. ad-video: ideate, build a reusable media kit, generate (fal, ElevenLabs via MCP) and assemble/localize 9:16 promo videos for any product.",
+  "author": {
+    "name": "Luke Radomski",
+    "url": "https://github.com/lradomski10m"
+  },
+  "homepage": "https://github.com/lradomski10m/skills/tree/main/media",
+  "repository": "https://github.com/lradomski10m/skills",
+  "license": "MIT",
+  "keywords": [
+    "video",
+    "ads",
+    "short-form",
+    "tiktok",
+    "reels",
+    "ffmpeg",
+    "elevenlabs",
+    "fal",
+    "localization"
+  ],
+  "privacyPolicyUrl": "https://github.com/lradomski10m/skills/blob/main/media/README.md#privacy"
+}

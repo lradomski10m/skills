@@ -1,0 +1,75 @@
+{
+  "campaign": "animals",
+  "title": "Example — photo rules, broken by animals",
+  "look": {
+    "stillTemplate": "Photorealistic {subject}, sitting upright, centred in frame, head-and-shoulders passport photo framing, facing the camera directly, plain light-grey wall behind, soft even frontal studio light, sharp focus, natural colours, vertical 9:16, no text, no logos, no frames."
+  },
+  "shots": [
+    {
+      "id": "quokka",
+      "subject": "quokka with its natural wide smile",
+      "videoPrompt": "Static locked-off camera. A single bright white camera flash fires. The quokka tries to hold a serious face: it presses its lips together for a moment, its cheeks twitch, then it breaks into an even wider, delighted smile and looks pleased with itself. Soft even light, plain grey wall, subtle natural movement, no camera movement, no text.",
+      "action": [
+        {
+          "file": "quokka.oneshot.mp4"
+        }
+      ],
+      "flash": "auto",
+      "verdict": "rejected",
+      "seed": 501
+    },
+    {
+      "id": "dog",
+      "subject": "scruffy brown mixed-breed dog with soft ears, alert and curious",
+      "videoPrompt": "Static locked-off camera. A single bright white camera flash fires. The dog perks up its ears and tilts its head sharply to one side, holds it, then tilts it to the other side, deeply curious. Soft even light, plain grey wall, no camera movement, no text.",
+      "action": [
+        {
+          "file": "dog.mp4"
+        }
+      ],
+      "flash": "auto",
+      "verdict": "rejected",
+      "seed": 502
+    },
+    {
+      "id": "cow",
+      "subject": "highland cow calf with a long ginger fringe completely covering both eyes",
+      "videoPrompt": "Static locked-off camera. A single bright white camera flash fires. The highland cow calf shakes its head, the long ginger fringe swings aside for a split second revealing one eye, then falls straight back over both eyes. The calf stands still, unbothered. Soft even light, plain grey wall, no camera movement, no text.",
+      "action": [
+        {
+          "file": "cow.mp4"
+        }
+      ],
+      "flash": "auto",
+      "beat": "action",
+      "verdict": "rejected",
+      "seed": 503
+    },
+    {
+      "id": "chameleon",
+      "subject": "green chameleon perched on a thin branch, body facing the camera",
+      "videoPrompt": "Static locked-off macro camera. A single bright white camera flash fires. The chameleon's two eyes swivel independently: one looks straight into the camera while the other rolls up and away, then they swap directions. The body stays perfectly still on the branch. Soft even light, plain grey wall, no camera movement, no text.",
+      "action": [
+        {
+          "file": "chameleon.mp4"
+        }
+      ],
+      "flash": "auto",
+      "beat": "settle",
+      "verdict": "rejected",
+      "seed": 504
+    }
+  ],
+  "endCard": {
+    "durationSec": 3
+  },
+  "music": {
+    "file": null
+  },
+  "captions": false,
+  "ruleCaptions": false,
+  "labels": {},
+  "hook": {
+    "durationSec": 2
+  }
+}

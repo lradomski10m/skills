@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+# Consumer scratch folders, if someone runs the engine from inside this repo
+/media-work/
+/media-kit/
+*.log

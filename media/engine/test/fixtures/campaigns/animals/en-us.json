@@ -1,0 +1,114 @@
+{
+  "base": "base.json",
+  "id": "animals-en-us",
+  "title": "Example — photo rules, broken by animals (en-us)",
+  "locale": "en-us",
+  "voices": {
+    "narrator": {
+      "designPrompt": "Warm, friendly American female voice, early 30s, gently amused, like a kind friend explaining something with a smile.",
+      "voiceId": "example-narrator-voice-id",
+      "modelId": "eleven_v4",
+      "offlineVoice": "Samantha"
+    },
+    "clerk": {
+      "voiceId": null,
+      "modelId": "eleven_multilingual_v2",
+      "ifMissing": "skip"
+    },
+    "announcer": {
+      "designPrompt": "Confident, upbeat American male announcer.",
+      "voiceId": "example-announcer-voice-id",
+      "modelId": "eleven_v4",
+      "postSpeed": 1.2,
+      "offlineVoice": "Fred"
+    }
+  },
+  "labels": {
+    "rejected": "REJECTED",
+    "approved": "APPROVED"
+  },
+  "clerkLines": {
+    "rejected": "Rejected.",
+    "approved": "Approved."
+  },
+  "hook": {
+    "text": "Passport photo requirements",
+    "vo": {
+      "text": "Passport photo requirements.",
+      "tts": "[warm, amused, American English] Passport photo requirements."
+    }
+  },
+  "shots": {
+    "quokka": {
+      "caption": "Neutral expression. No smiling.",
+      "vo": {
+        "line": {
+          "text": "One: neutral expression. No smiling.",
+          "tts": "[warm, amused, American English] One: neutral expression. No smiling."
+        },
+        "quip": {
+          "text": "Oh no…",
+          "tts": "[disappointed sigh, American English] Oh no…"
+        }
+      }
+    },
+    "dog": {
+      "caption": "Keep your head straight. No tilting.",
+      "vo": {
+        "line": {
+          "text": "Two: head straight. No tilting.",
+          "tts": "[warm, amused, American English] Two: head straight. No tilting."
+        },
+        "quip": {
+          "text": "Seriously?",
+          "tts": "[incredulous, surprised, American English] Seriously?"
+        }
+      }
+    },
+    "cow": {
+      "caption": "Hair must not cover your eyes or face.",
+      "vo": {
+        "line": {
+          "text": "Three: hair can't cover your eyes or face.",
+          "tts": "[warm, amused, American English] Three: hair can't cover your eyes or face."
+        },
+        "quip": {
+          "text": "Not even a little.",
+          "tts": "[dry, deadpan, American English] Not even a little."
+        }
+      }
+    },
+    "chameleon": {
+      "caption": "Look straight at the camera.",
+      "vo": {
+        "line": {
+          "text": "Four: look straight at the camera.",
+          "tts": "[warm, amused, American English] Four: look straight at the camera."
+        },
+        "quip": {
+          "text": "Both eyes, same direction…",
+          "tts": "[exasperated, amused, American English] Both eyes, same direction…"
+        }
+      }
+    }
+  },
+  "endCard": {
+    "copy": "Your passport photo in a minute, at home. Free retakes.",
+    "cta": "Go to example.com",
+    "ctaHint": "link in bio ↓",
+    "announcer": {
+      "text": "Your passport photo in a minute, at home. Free retakes. Go to example.com.",
+      "tts": "[formal, confident, slightly fast like the small print at the end of a radio ad] Your passport photo in a minute, at home. Free retakes. [warm, clear] Go to example dot com. (post-processed 1.2×)"
+    },
+    "stampAtPhrase": "Free retakes.",
+    "sheet": {
+      "tagline": [
+        "Document photos,",
+        "perfect at home."
+      ],
+      "order": "ORDER #2x2in",
+      "qrUrl": "https://example.com/en-us/"
+    },
+    "style": "real-sheet"
+  }
+}

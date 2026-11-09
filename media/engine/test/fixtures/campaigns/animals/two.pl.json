@@ -1,0 +1,9 @@
+{
+  "extends": "pl.json",
+  "id": "animals-two-pl",
+  "title": "Example cut \u2014 two shots + end card",
+  "shots": [
+    "quokka",
+    "dog"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "fal": {
+      "url": "https://mcp.fal.ai/mcp-relay"
+    },
+    "elevenlabs": {
+      "url": "https://api.elevenlabs.io/v1/mcp"
+    }
+  }
+}

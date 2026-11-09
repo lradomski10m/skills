@@ -1,0 +1,9 @@
+{
+  "*": {
+    "clerk": { "voiceId": null, "modelId": "eleven_multilingual_v2", "ifMissing": "skip" }
+  },
+  "en-us": {
+    "narrator": { "voiceId": null, "voiceName": "<pick in ElevenLabs>", "modelId": "eleven_v4", "designPrompt": "Warm, friendly female voice, early 30s, gently amused." },
+    "announcer": { "voiceId": null, "voiceName": "<pick in ElevenLabs>", "modelId": "eleven_v4", "postSpeed": 1.2, "designPrompt": "Confident, upbeat male announcer." }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "lradomski-skills",
+  "description": "Reusable agent skills grouped by domain. First plugin: media (ad-video — short-form 9:16 promo videos for any product).",
+  "owner": {
+    "name": "Luke Radomski",
+    "url": "https://github.com/lradomski10m"
+  },
+  "plugins": [
+    {
+      "name": "media",
+      "source": "./media",
+      "description": "Plan, generate, assemble and localize short-form 9:16 promo videos for any product: ideation, a reusable media kit, fal + ElevenLabs generation via MCP, and a local ffmpeg/sharp assembly engine.",
+      "category": "media",
+      "tags": ["video", "ads", "tiktok", "reels", "shorts", "ffmpeg", "localization"]
+    }
+  ]
+}

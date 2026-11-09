@@ -1,0 +1,36 @@
+{
+  "base": "base.json",
+  "id": "<campaign-id>-en-us",
+  "title": "<Concept> — <title> (en-us)",
+  "locale": "en-us",
+  "hook": {
+    "text": "<hook>",
+    "vo": {
+      "text": "<hook.>",
+      "tts": "[warm, amused] <hook.>"
+    }
+  },
+  "shots": {
+    "<shot-id>": {
+      "caption": "<rule, short>",
+      "vo": {
+        "line": {
+          "text": "<line>",
+          "tts": "[warm, amused] <line>"
+        },
+        "quip": {
+          "text": "<quip>",
+          "tts": "[disappointed] <quip>"
+        }
+      }
+    }
+  },
+  "endCard": {
+    "copy": "<on-screen copy>",
+    "announcer": {
+      "text": "<… example.com.>",
+      "tts": "<… example dot com.>"
+    },
+    "stampAtPhrase": "<phrase the stamp lands on>"
+  }
+}

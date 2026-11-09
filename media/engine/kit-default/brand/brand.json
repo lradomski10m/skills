@@ -1,0 +1,8 @@
+{
+  "name": "Brand",
+  "stampMark": "brand",
+  "url": "example.com",
+  "icon": "icon.png",
+  "chip": null,
+  "endCard": { "style": "grid" }
+}
