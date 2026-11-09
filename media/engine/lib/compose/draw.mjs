@@ -110,7 +110,8 @@ export async function drawTimeline(tl, { gfxDir, cacheDir, ctx, log = () => {} }
         o.file = await cached({ svg, vars, fonts: fonts.fontFiles }, '.png', async (f) => fs.writeFile(f, renderSvg(fill(svg, vars, o.template), fonts)));
       }
       const meta = templateMeta(svg);
-      if (meta.place && !o.placeFromShot) o.place = { ...meta.place, ...o.place };
+      // The template's own default placement, under anything the overlay sets.
+      if (meta.place) o.place = { ...meta.place, ...o.place };
     } else if (o.kind === 'pip') {
       const pts = o.quad.map(([x, y]) => `${x},${y}`).join(' ');
       o.mask = await cached({ quad: o.quad, w: R.width, h: R.height }, '.png', async (f) =>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="110" viewBox="0 0 980 110">
+<!-- template: { size: [980, 110], params: { text: text, label: "text, optional" }, place: { area: bottom-band } } -->
+  <rect x="0" y="0" width="980" height="110" rx="14" fill="#000000" fill-opacity="0.6"/>
+  <text x="490" y="70" text-anchor="middle" font-family="{{font.family}}" font-weight="700" font-size="44" fill="{{colour.text}}" data-fit-width="920"><tspan fill="{{colour.accent}}">{{label|default:}}</tspan> {{text}}</text>
+</svg>

@@ -339,8 +339,8 @@ export const CONFIG = Object.freeze({
     'bottom-band': Object.freeze({ anchor: 'bottom', y: 1500 }),
     'hud-top-left': Object.freeze({ anchor: 'top', x: '56', y: 268 }),
     'hud-top-right': Object.freeze({ anchor: 'top', x: 'main_w-overlay_w-56', y: 268 }),
-    'hud-bottom-left': Object.freeze({ anchor: 'bottom', x: '56', y: 1500 }),
-    'hud-bottom-right': Object.freeze({ anchor: 'bottom', x: 'main_w-overlay_w-56', y: 1500 }),
+    'hud-bottom-left': Object.freeze({ anchor: 'bottom', x: '56', y: 1370 }),
+    'hud-bottom-right': Object.freeze({ anchor: 'bottom', x: 'main_w-overlay_w-56', y: 1370 }),
   }),
 
   /** Spoken hook (spec hook.vo): starts at voStartSec; the first rule line starts ≥ voGapSec after it ends. */

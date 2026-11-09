@@ -13,7 +13,7 @@ Copy defaults come from the kit (`copy/<locale>.yaml` → `endCard`).
 ```yaml
 params:
   style:         { type: enum, values: [kit, real-sheet, grid, grid-strip, tilted, classic], default: kit }
-  line:          { type: vo, role: announcer, doc: announcer line (CTA, spoken URL) }
+  line:          { type: vo, role: announcer, doc: "announcer line (CTA, spoken URL)" }
   clerk:         { type: vo, role: clerk }
   stampAtPhrase: { type: text, default: "=copy.endCard.stampAtPhrase", doc: "classic style: the stamp lands at the end of this phrase" }
   copy:          { type: text, default: "=copy.endCard.copy" }

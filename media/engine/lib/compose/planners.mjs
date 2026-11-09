@@ -110,7 +110,7 @@ async function montage(a, ctx) {
     cuts.push(t);
     if (a.maxSec && t >= a.maxSec) break;
   }
-  return { durationSec: t, events: { cuts, slices: segments.length }, segments };
+  return { durationSec: t, events: { cuts, starts: cuts.slice(0, -1), slices: segments.length }, segments };
 }
 
 /**

@@ -9,7 +9,7 @@ least `duration` seconds and until the spoken hook (+ a short tail) ends.
 ```yaml
 params:
   text:     { type: text, required: true }
-  line:     { type: vo, role: narrator, doc: spoken hook }
+  line:     { type: vo, role: narrator, doc: "spoken hook" }
   duration: { type: number, default: 2 }
 plan:
   planner: hook

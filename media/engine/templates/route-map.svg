@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="360" viewBox="0 0 360 360">
+<!-- template: { size: [360, 360], params: { progress: "number 0..1 (animate it)", label: "text, optional" }, place: { area: hud-bottom-left } } -->
+<!-- The route path is 440 px long; edit the path and that number together. -->
+  <defs><clipPath id="c"><circle cx="180" cy="180" r="170"/></clipPath></defs>
+  <g clip-path="url(#c)">
+    <rect width="360" height="360" fill="#1d2633"/>
+    <path d="M0 90 H360 M0 200 H360 M0 300 H360 M80 0 V360 M200 0 V360 M300 0 V360" stroke="#3a4a5e" stroke-width="14"/>
+    <path id="r" d="M70 300 L70 200 L200 200 L200 90 L300 90" fill="none" stroke="{{colour.accent}}" stroke-opacity="0.35" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M70 300 L70 200 L200 200 L200 90 L300 90" fill="none" stroke="{{colour.accent}}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="440" stroke-dashoffset="{{progress|invert|scale:440|fixed:1}}"/>
+    <circle cx="300" cy="90" r="16" fill="{{colour.text}}"/>
+  </g>
+  <circle cx="180" cy="180" r="170" fill="none" stroke="{{colour.text}}" stroke-width="6"/>
+  <text x="180" y="345" text-anchor="middle" font-family="{{font.family}}" font-weight="700" font-size="30" fill="{{colour.text}}">{{label|default:}}</text>
+</svg>

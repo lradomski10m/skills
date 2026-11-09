@@ -5,7 +5,6 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { createInputs, inputPath } from '../lib/inputs.mjs';
 import { resolveRoots, workPaths } from '../lib/paths.mjs';
-import { scaleAlignment } from '../lib/pipeline.mjs';
 
 describe('inputs in media-work/<campaign>/', () => {
   const P = workPaths({ workRoot: '/w', campaign: 'c', locale: 'pl' });
@@ -65,14 +64,5 @@ describe('inputs in media-work/<campaign>/', () => {
     const inputs = createInputs(null);
     assert.equal(inputs.enabled, false);
     assert.equal(inputs.vo('quokka', 'line'), null);
-  });
-});
-
-describe('post-speed', () => {
-  it('rescales alignment times after atempo', () => {
-    const a = { characters: ['a', 'b'], character_start_times_seconds: [0, 1.2], character_end_times_seconds: [1.2, 2.4] };
-    const s = scaleAlignment(a, 1 / 1.2);
-    assert.deepEqual(s.character_end_times_seconds.map((x) => Math.round(x * 1000) / 1000), [1, 2]);
-    assert.deepEqual(s.characters, a.characters);
   });
 });

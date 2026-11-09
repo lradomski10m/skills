@@ -19,19 +19,19 @@ action; the flash fires when it completes; with `result` the video cuts to that 
 
 ```yaml
 params:
-  clip:      { type: clip, required: true, doc: continuous action clip }
-  result:    { type: still, doc: result still shown after the cut }
-  intro:     { type: still, doc: context still before the clip }
-  introClip: { type: clip, doc: context clip before the clip (its tail is used) }
+  clip:      { type: clip, required: true, doc: "continuous action clip" }
+  result:    { type: still, doc: "result still shown after the cut" }
+  intro:     { type: still, doc: "context still before the clip" }
+  introClip: { type: clip, doc: "context clip before the clip (its tail is used)" }
   beat:      { type: enum, values: [action, settle], default: action }
   flash:     { type: enum, values: [auto, synthetic], default: auto }
   verdict:   { type: enum, values: [reject, approve, none], default: reject }
-  line:      { type: vo, role: narrator, required: true, doc: the rule / setup line }
-  quip:      { type: vo, role: narrator, doc: reaction after the stamp }
-  clerk:     { type: vo, role: clerk, doc: optional one-word judgement voice }
-  caption:   { type: text, doc: rule label (shown only with rulePill) }
+  line:      { type: vo, role: narrator, required: true, doc: "the rule / setup line" }
+  quip:      { type: vo, role: narrator, doc: "reaction after the stamp" }
+  clerk:     { type: vo, role: clerk, doc: "optional one-word judgement voice" }
+  caption:   { type: text, doc: "rule label (shown only with rulePill)" }
   rulePill:  { type: bool, default: false }
-  mark:      { type: bool, default: false, doc: small ✗/✓ mark on the stamp }
+  mark:      { type: bool, default: false, doc: "small ✗/✓ mark on the stamp" }
   stamp:     { type: bool, default: true }
 plan:
   planner: reveal

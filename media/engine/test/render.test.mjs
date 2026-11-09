@@ -9,8 +9,8 @@ import { CONFIG } from '../lib/config.mjs';
 import { BUS, INTRO_KIND, SFX, VERDICT } from '../lib/constants.mjs';
 import { stripEmoji } from '../lib/graphics.mjs';
 import { offlineClipFilter } from '../lib/providers/offline.mjs';
-import { actionConcatArgs, finalPassArgs, segmentArgs, shotSegmentArgs, shotSegmentFilter, syntheticFlashFilter, musicDuckExpr } from '../lib/render.mjs';
-import { ANCHOR, brandBugPadPx, buildTimeline, checkTimeline, dbToGain, duckWindows, GRAPHIC, meanLufs, musicGainDb } from '../lib/timeline.mjs';
+import { actionConcatArgs, ANCHOR, finalPassArgs, segmentArgs, shotSegmentArgs, shotSegmentFilter, syntheticFlashFilter, musicDuckExpr } from '../lib/render.mjs';
+import { checkTimeline, dbToGain, duckWindows, meanLufs, musicGainDb } from '../lib/timeline.mjs';
 
 describe('captions', () => {
   const text = 'Głowa prosto. Nie przechylamy, ani trochę.';
@@ -51,150 +51,27 @@ describe('captions', () => {
   });
 });
 
-const line = (text, dur) => ({ file: `${text}.wav`, alignment: approximateAlignment(text, dur), durationSec: dur });
 const analysis = { durationSec: 5, flash: { found: true, t: 0.2 }, action: { found: true, t: 2.6 } };
 
-function sampleTimeline({ withEndCard = true, clerkOverride, ...extra } = {}) {
-  const rejected = planRejectedShot({ analysis, voDur: 1.6, quipDur: 0.6, clerkDur: 0.8 });
-  const approved = planApprovedShot({ clipDur: 5, voDur: 3.5 });
-  const spec = { hook: { durationSec: 2 }, endCard: { durationSec: 3 }, ruleCaptions: extra.ruleCaptions ?? true, marks: extra.marks ?? false, tempo: extra.tempo ?? 'relaxed' };
-  return buildTimeline({
-    spec,
-    shots: [
-      { shot: { id: 'quokka' }, plan: rejected, clipFile: 'q.mp4', line: line('Bez uśmiechu.', 1.6), quip: line('…no nie.', 0.6) },
-      { shot: { id: 'payoff' }, plan: approved, clipFile: 'p.mp4', line: line('Poprawki gratis.', 3.5) },
+/** A hand-built resolved timeline (the composer's output shape) for the final-pass builders. */
+function sampleTimeline() {
+  const H = CONFIG.render.height;
+  return {
+    totalSec: 10,
+    overlays: [
+      { graphic: 'hook', file: 'hook.png', fromSec: 0, toSec: 2, place: { anchor: 'top', y: CONFIG.layout.hookTop } },
+      { graphic: 'mark', file: 'mark.png', fromSec: 1, toSec: 3, place: { anchor: 'center', y: CONFIG.layout.markY } },
+      { graphic: 'stamp', file: 'stamp.png', fromSec: 2, toSec: 4, place: { anchor: 'bottom', y: H - CONFIG.layout.stampBottomGap } },
     ],
-    clerk: clerkOverride ?? { [VERDICT.REJECTED]: { file: 'rej.wav', durationSec: 0.8 }, [VERDICT.APPROVED]: { file: 'app.wav', durationSec: 0.9 } },
-    sfx: { [SFX.THUD]: 'thud.wav', [SFX.DING]: 'ding.wav', [SFX.WHOOSH]: 'whoosh.wav', [SFX.SHUTTER]: 'shutter.wav' },
-    withEndCard,
-    announcer: withEndCard ? line('Go to example dot com.', 1.5) : null,
-    ...extra,
-  });
+    audio: [
+      { file: 'line.wav', atSec: 1, durSec: 1.5, bus: 'voice', gain: 1 },
+      { file: 'thud.wav', atSec: 2, bus: 'sfx', gain: 0.9 },
+    ],
+    effects: [],
+  };
 }
 
-describe('timeline', () => {
-  it('lays segments back to back and ends with the end card', () => {
-    const tl = sampleTimeline();
-    assert.deepEqual(tl.segments.map((s) => s.kind), ['shot', 'shot', 'endcard']);
-    const [a, b, c] = tl.segments;
-    assert.equal(b.startSec, a.plan.durationSec);
-    assert.ok(Math.abs(tl.totalSec - (c.startSec + c.durationSec)) < 0.002);
-    assert.deepEqual(checkTimeline(tl), []);
-  });
-
-  it('puts the stamp (and the optional ✗) and the thud at the same instant, after the beat', () => {
-    const tl = sampleTimeline({ marks: true });
-    const stamp = tl.overlays.find((o) => o.graphic === GRAPHIC.STAMP(VERDICT.REJECTED));
-    const mark = tl.overlays.find((o) => o.graphic === GRAPHIC.MARK(VERDICT.REJECTED));
-    const thud = tl.audio.find((a) => a.file === 'thud.wav');
-    assert.equal(stamp.fromSec, mark.fromSec);
-    assert.equal(stamp.fromSec, thud.atSec);
-    assert.ok(stamp.fromSec > tl.segments[0].plan.beatAtSec);
-  });
-
-  it('shows no rule labels when ruleCaptions is off', () => {
-    const tl = sampleTimeline({ ruleCaptions: false });
-    assert.ok(!tl.overlays.some((o) => o.graphic === GRAPHIC.PILL('quokka')));
-  });
-
-  it('anchors the sticker by its bottom edge stampBottomGap above the frame bottom; no ✗/✓ by default', () => {
-    const tl = sampleTimeline({ ruleCaptions: false });
-    const stamp = tl.overlays.find((o) => o.graphic === GRAPHIC.STAMP(VERDICT.REJECTED));
-    assert.equal(stamp.anchor, ANCHOR.BOTTOM);
-    assert.equal(stamp.y, CONFIG.render.height - CONFIG.layout.stampBottomGap);
-    assert.ok(!tl.overlays.some((o) => o.graphic.startsWith('mark-')), 'marks are off by default');
-  });
-
-  it('draws the optional ✗ over the sticker when marks are on', () => {
-    const tl = sampleTimeline({ marks: true });
-    const stamp = tl.overlays.find((o) => o.graphic === GRAPHIC.STAMP(VERDICT.REJECTED));
-    const mark = tl.overlays.find((o) => o.graphic === GRAPHIC.MARK(VERDICT.REJECTED));
-    assert.ok(tl.overlays.indexOf(mark) > tl.overlays.indexOf(stamp));
-  });
-
-  it('hides the first rule pill under the hook, and captions only the narrator', () => {
-    const tl = sampleTimeline();
-    assert.equal(tl.overlays[0].graphic, GRAPHIC.HOOK);
-    assert.equal(tl.overlays.find((o) => o.graphic === GRAPHIC.PILL('quokka')).fromSec, 2);
-    const text = tl.captions.map((c) => c.text).join(' ');
-    assert.match(text, /Bez uśmiechu\. …no nie\. Poprawki gratis\./);
-    assert.ok(tl.audio.filter((a) => a.bus === BUS.VOICE).length >= 4);
-  });
-
-  it('places the end-card announcer line before the APPROVED stamp and stretches the card to fit', () => {
-    const tl = sampleTimeline();
-    const card = tl.segments.at(-1);
-    const vo = tl.audio.find((a) => a.file === 'Go to example dot com..wav');
-    const stamp = tl.overlays.find((o) => o.graphic === GRAPHIC.ENDCARD_FULL);
-    assert.ok(vo.atSec > card.startSec && vo.atSec + 1.5 < stamp.fromSec);
-    assert.ok(card.durationSec >= 3);
-    assert.ok(Math.abs(tl.totalSec - (card.startSec + card.durationSec)) < 0.002);
-  });
-
-  it('keeps text labels (top-anchored) inside the safe area; the sticker alone may overlap platform UI', () => {
-    const tl = sampleTimeline();
-    const { safeTop, safeBottom } = CONFIG.layout;
-    // The brand bug sits top-left above the safe area by design; text labels stay inside it.
-    for (const o of tl.overlays.filter((x) => x.anchor === ANCHOR.TOP && x.graphic !== GRAPHIC.BRAND)) {
-      assert.ok(o.y >= safeTop && o.y <= safeBottom, `${o.graphic} at ${o.y}`);
-    }
-    assert.equal(tl.overlays.find((o) => o.graphic === GRAPHIC.HOOK).anchor, ANCHOR.TOP);
-  });
-
-  it('drops the clerk word cleanly when the clerk role is skipped', () => {
-    const tl = sampleTimeline({ clerkOverride: { [VERDICT.REJECTED]: null, [VERDICT.APPROVED]: null } });
-    assert.ok(!tl.audio.some((a) => a.file === 'rej.wav' || a.file === 'app.wav'));
-    assert.deepEqual(checkTimeline(tl), []);
-  });
-
-  it('plays an end-card background clip under the card, with the card as an overlay', () => {
-    const tl = sampleTimeline({ endCardBackground: 'group.mp4' });
-    const card = tl.segments.at(-1);
-    assert.equal(card.backgroundClip, 'group.mp4');
-    const base = tl.overlays.find((o) => o.graphic === GRAPHIC.ENDCARD_BASE);
-    const full = tl.overlays.find((o) => o.graphic === GRAPHIC.ENDCARD_FULL);
-    assert.equal(base.fromSec, card.startSec);
-    assert.equal(base.toSec, full.fromSec);
-    const args = segmentArgs(card, (k) => `${k}.png`, 'out.mp4');
-    assert.deepEqual(args.slice(0, 4), ['-stream_loop', '-1', '-i', 'group.mp4']);
-    assert.ok(!sampleTimeline().overlays.some((o) => o.graphic === GRAPHIC.ENDCARD_BASE), 'no base overlay on a solid card');
-  });
-
-  it('plays a shutter click on the intro → clip cut', () => {
-    const plan = planRejectedShot({ analysis, voDur: 1.6, introDur: 0.8 });
-    const tl = buildTimeline({
-      spec: { hook: { durationSec: 2 }, endCard: { durationSec: 3 } },
-      shots: [{ shot: { id: 'q' }, plan, clipFile: 'q.mp4', line: line('Bez uśmiechu.', 1.6), intro: { kind: INTRO_KIND.STILL, file: 'i.png' } }],
-      clerk: {},
-      sfx: { [SFX.THUD]: 'thud.wav', [SFX.DING]: 'ding.wav', [SFX.SHUTTER]: 'shutter.wav' },
-      withEndCard: false,
-    });
-    assert.equal(tl.audio.find((a) => a.file === 'shutter.wav').atSec, plan.events.cutAt);
-    assert.equal(tl.segments[0].intro.file, 'i.png');
-  });
-
-  it('plays the spoken hook at the start and keeps the title up for it', () => {
-    const tl = sampleTimeline({ hookVo: line('Wymogi zdjęcia do dowodu.', 2.32) });
-    const hook = tl.audio.find((a) => a.file === 'Wymogi zdjęcia do dowodu..wav');
-    assert.equal(hook.atSec, CONFIG.hook.voStartSec);
-    const title = tl.overlays.find((o) => o.graphic === GRAPHIC.HOOK);
-    assert.ok(title.toSec >= hook.atSec + 2.32, `title until ${title.toSec}`);
-  });
-
-  it('shows the brand bug top-left over the animal shots only (not the end card)', () => {
-    const tl = sampleTimeline();
-    const bugs = tl.overlays.filter((o) => o.graphic === GRAPHIC.BRAND);
-    const bug = bugs[0];
-    const card = tl.segments.at(-1);
-    assert.equal(bug.fromSec, 0);
-    assert.equal(Math.max(...bugs.map((b) => b.toSec)), card.startSec, 'covers the shots, stops at the end card');
-    bugs.slice(1).forEach((b, k) => assert.equal(b.fromSec, bugs[k].toSec, 'contiguous'));
-    const at = CONFIG.brandBug.marginPx - brandBugPadPx();
-    assert.equal(bug.x, at, 'visible margin = marginPx (PNG shadow padding compensated)');
-    const graph = finalPassArgs(tl, { graphicFile: (k) => k, captionsFile: null }, 'o.mp4').join(' ');
-    assert.match(graph, new RegExp(`overlay=x=${at}:y=${at}:`));
-  });
-
+describe('brand graphics', () => {
   it('builds the brand chip from a kit chip image: config height, rounded, translucent, shadow-padded', async () => {
     const { default: sharp } = await import('sharp');
     const { brandChipImagePng } = await import('../lib/graphics.mjs');
@@ -229,54 +106,6 @@ describe('timeline', () => {
     assert.ok(alphaAt(2, 2) < 40, 'corner outside the pill is (nearly) transparent');
   });
 
-  it('snappy tempo: whooshes into every cut after the first shot, and no dead air between shots', () => {
-    const tl = sampleTimeline({ tempo: 'snappy' });
-    const W = CONFIG.tempo.profiles.snappy.whoosh;
-    const cuts = tl.segments.slice(1).map((s) => s.startSec);
-    const whooshes = tl.audio.filter((a) => a.file === 'whoosh.wav').map((a) => a.atSec);
-    assert.deepEqual(whooshes, cuts.map((c) => Math.round((c - W.leadSec) * 1000) / 1000));
-    assert.ok(!tl.audio.some((a) => a.file === 'whoosh.wav' && a.atSec < 0.01), 'no whoosh before the first shot');
-  });
-
-  it('snappy end card: announcer from the first frame, stamp at 60% without real timing, card ends 0.3 s after the VO', () => {
-    // Clerk skipped (as in the A5 spec): nothing after the stamp outlasts the VO.
-    const tl = sampleTimeline({ tempo: 'snappy', clerkOverride: { [VERDICT.REJECTED]: null, [VERDICT.APPROVED]: null } });
-    const card = tl.segments.at(-1);
-    const E = CONFIG.tempo.profiles.snappy.endCard;
-    const vo = tl.audio.find((a) => a.file === 'Go to example dot com..wav');
-    const stamp = tl.overlays.find((o) => o.graphic === GRAPHIC.ENDCARD_FULL);
-    assert.equal(vo.atSec, card.startSec);
-    assert.ok(Math.abs(stamp.fromSec - (card.startSec + 1.5 * E.stampAtFraction)) < 0.002);
-    assert.ok(Math.abs(card.durationSec - (1.5 + E.tailSec)) < 0.002);
-  });
-
-  it('photo-sheet end card: the sheet fades + slides in on the first frame; the stamp lands on it; no full-card swap', () => {
-    // Clerk skipped, as in the A5 spec (a clerk word would sit between the stamp and the VO).
-    const tl = sampleTimeline({ endCardSheet: true, clerkOverride: { [VERDICT.REJECTED]: null, [VERDICT.APPROVED]: null } });
-    const card = tl.segments.at(-1);
-    const sheet = tl.overlays.find((o) => o.graphic === GRAPHIC.PHOTO_SHEET);
-    assert.equal(sheet.fromSec, card.startSec);
-    assert.deepEqual(sheet.fadeIn, { startSec: card.startSec, durSec: CONFIG.photoSheet.inSec });
-    assert.equal(sheet.slide.dyPx, CONFIG.photoSheet.slideDyPx);
-    const stamp = tl.overlays.find((o) => o.graphic === GRAPHIC.STAMP(VERDICT.APPROVED));
-    const PS = CONFIG.photoSheet;
-    assert.ok(Math.abs(stamp.fromSec - (card.startSec + PS.inSec + PS.stampAfterInSec)) < 0.002, 'stamp right after the sheet settles');
-    // The announcer plays entirely over the finished frame, and the card ends 0.3 s after it.
-    const vo = tl.audio.find((a) => a.file === 'Go to example dot com..wav');
-    assert.ok(vo.atSec >= stamp.fromSec, 'VO starts once the frame is complete');
-    assert.ok(Math.abs(card.startSec + card.durationSec - (vo.atSec + 1.5 + CONFIG.endCard.tailSec)) < 0.002, 'card ends a tail after the VO');
-    assert.ok(tl.overlays.indexOf(stamp) > tl.overlays.indexOf(sheet), 'stamp drawn over the sheet');
-    assert.ok(!tl.overlays.some((o) => o.graphic === GRAPHIC.ENDCARD_FULL));
-    const graph = finalPassArgs(tl, { graphicFile: (k) => k, captionsFile: null }, 'o.mp4').join(' ');
-    assert.match(graph, /format=rgba,fade=t=in:st=[\d.]+:d=0\.300:alpha=1/);
-    assert.match(graph, /y='[\d-]+\+90\*pow\(max\(0,1-\(t-[\d.]+\)\/0\.300\),2\)'/);
-  });
-
-  it('omits the end card for a single-shot preview', () => {
-    const tl = sampleTimeline({ withEndCard: false });
-    assert.ok(tl.segments.every((s) => s.kind === 'shot'));
-    assert.ok(!tl.overlays.some((o) => o.graphic === GRAPHIC.ENDCARD_FULL));
-  });
 });
 
 describe('ffmpeg builders', () => {
@@ -297,7 +126,7 @@ describe('ffmpeg builders', () => {
   it('wires one input per overlay and per audio event, ducking music under the voice bus', () => {
     const tl = sampleTimeline();
     const music = { file: 'm.mp3', gainDb: -6, duckDb: -10, windows: [{ fromSec: 1, toSec: 2 }], attackSec: 0.1, releaseSec: 0.3, fadeOutSec: 0.4 };
-    const args = finalPassArgs(tl, { graphicFile: (k) => `${k}.png`, captionsFile: 'c.ass', music }, 'out.mp4');
+    const args = finalPassArgs(tl, { captionsFile: 'c.ass', music }, 'out.mp4');
     const inputs = args.filter((a) => a === '-i').length;
     assert.equal(inputs, 1 + tl.overlays.length + tl.audio.length + 1);
     const graph = args[args.indexOf('-filter_complex') + 1];
@@ -309,22 +138,22 @@ describe('ffmpeg builders', () => {
   });
 
   it('leaves out the subtitles filter when burned-in captions are off', () => {
-    const args = finalPassArgs(sampleTimeline(), { graphicFile: (k) => k, captionsFile: null }, 'o.mp4');
+    const args = finalPassArgs(sampleTimeline(), { captionsFile: null }, 'o.mp4');
     const graph = args[args.indexOf('-filter_complex') + 1];
     assert.doesNotMatch(graph, /subtitles=/);
     assert.match(graph, /format=yuv420p\[vout\]/);
   });
 
   it('positions top / centre / bottom anchored overlays at y, y − h/2 and y − h', () => {
-    const graph = finalPassArgs(sampleTimeline({ marks: true }), { graphicFile: (k) => k, captionsFile: null }, 'o.mp4').join(' ');
+    const graph = finalPassArgs(sampleTimeline(), { captionsFile: null }, 'o.mp4').join(' ');
     assert.match(graph, new RegExp(`y=${CONFIG.layout.hookTop}:`));
     assert.match(graph, new RegExp(`y=${CONFIG.layout.markY}-overlay_h/2`));
     assert.match(graph, new RegExp(`y=${CONFIG.render.height - CONFIG.layout.stampBottomGap}-overlay_h:`));
   });
 
-  it('skips the sidechain when there is no music', () => {
-    const graph = finalPassArgs(sampleTimeline(), { graphicFile: (k) => k, captionsFile: 'c.ass' }, 'o.mp4').join(' ');
-    assert.doesNotMatch(graph, /sidechaincompress/);
+  it('adds no music chain when there is no music', () => {
+    const graph = finalPassArgs(sampleTimeline(), { captionsFile: 'c.ass' }, 'o.mp4').join(' ');
+    assert.doesNotMatch(graph, /afade=t=out/);
   });
 
   it('builds a hard cut from a Ken Burns intro still into the clip on its flash', () => {
@@ -367,21 +196,6 @@ describe('ffmpeg builders', () => {
     assert.match(f, new RegExp(`\\[1:v\\]crop=.*zoompan=z='1\\+${CONFIG.result.pushIn}\\*on/74'.*\\[r\\]`));
     assert.match(f, /\[c\]\[r\]concat=n=2:v=1:a=0,trim=duration=7\.500/);
     assert.deepEqual(shotSegmentArgs(plan, 'c.mp4', 'o.mp4', { result, clipAspect: 0.55 }).slice(0, 4), ['-i', 'c.mp4', '-i', 'r.png']);
-  });
-
-  it('plays the shutter on the clip flash in a result shot', async () => {
-    const { planResultShot } = await import('../lib/alignment.mjs');
-    const plan = planResultShot({ analysis: { durationSec: 6, flashes: [{ t: 5.25 }] }, voDur: 3, quipDur: 1.8 });
-    const tl = buildTimeline({
-      spec: { hook: { durationSec: 2 }, endCard: { durationSec: 3 } },
-      shots: [{ shot: { id: 'q' }, plan, clipFile: 'q.mp4', line: line('Bez uśmiechu.', 3), quip: line('No nie…', 1.8), result: { file: 'r.png' } }],
-      clerk: {},
-      sfx: { [SFX.THUD]: 'thud.wav', [SFX.DING]: 'ding.wav', [SFX.SHUTTER]: 'shutter.wav' },
-      withEndCard: false,
-    });
-    assert.equal(tl.audio.find((a) => a.file === 'shutter.wav').atSec, plan.events.shutterAt);
-    assert.equal(tl.overlays.find((o) => o.graphic === GRAPHIC.STAMP(VERDICT.REJECTED)).fromSec, plan.events.stampAt);
-    assert.equal(tl.segments[0].result.file, 'r.png');
   });
 
   it('snaps a between-frames flash time to the nearest frame (never skips the brightest frame)', () => {

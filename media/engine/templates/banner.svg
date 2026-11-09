@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="420" viewBox="0 0 1080 420">
+<!-- template: { size: [1080, 420], params: { text: text, subtitle: "text, optional" }, place: { area: center } } -->
+  <rect x="0" y="80" width="1080" height="260" fill="#000000" fill-opacity="0.55"/>
+  <text x="540" y="230" text-anchor="middle" font-family="{{font.family}}" font-weight="900" font-size="150" fill="{{colour.text}}" stroke="#000000" stroke-width="8" paint-order="stroke" data-fit-width="980">{{text|upper}}</text>
+  <text x="540" y="310" text-anchor="middle" font-family="{{font.family}}" font-weight="700" font-size="40" fill="{{colour.text}}" data-fit-width="980">{{subtitle|default:}}</text>
+</svg>

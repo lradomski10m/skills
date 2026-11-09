@@ -31,7 +31,8 @@ async function resolveParam(decl, value, ctx) {
     case 'vo':
       return ctx.vo(value, decl.role ?? 'narrator');
     case 'sfx':
-      return ctx.sfx(value);
+      ctx.sfx(value); // validates the name now; audio items resolve it again
+      return value;
     case 'music':
       return ctx.music(value);
     case 'kit':
@@ -86,6 +87,8 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
         return getPath(item.plan.events, rest);
       case 'start':
         return 0;
+      case 'each':
+        return getPath(item.eachValue, rest);
       case 'shotStart':
         return item.start;
       case 'end':
@@ -228,7 +231,9 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
       audio.push({ file: ctx.sfx(name), atSec: r3(g), bus: BUS.SFX, gain: a.gain ?? SFX_GAIN[name] ?? 1, label: name });
     } else if (a.dialogue !== undefined) {
       const c = valueOf(item, extra, a.dialogue, [...at, 'dialogue']);
-      if (c?.file) audio.push({ file: c.file, atSec: r3(g), durSec: r3(c.durationSec), bus: BUS.VOICE, gain: a.gain ?? 1, label: 'dialogue', inSec: a.in ?? 0 });
+      const inSec = evalAt(item, extra, a.in ?? 0, [...at, 'in']) ?? 0;
+      const dur = a.dur !== undefined ? evalAt(item, extra, a.dur, [...at, 'dur']) : c?.durationSec - inSec;
+      if (c?.file) audio.push({ file: c.file, atSec: r3(g), durSec: r3(dur), bus: BUS.VOICE, gain: a.gain ?? 1, label: 'dialogue', inSec });
     }
   };
   const pushOverlay = (item, extra, o, at) => {
@@ -237,13 +242,14 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
     const toLocal = evalAt(item, extra, o.to ?? 'end', [...at, 'to']);
     const to = item.start + (toLocal ?? item.plan.durationSec);
     const params = valueOf(item, extra, o.params ?? {}, [...at, 'params']);
-    const place = Object.fromEntries(Object.entries(o.place ?? {}).map(([k, v]) => [k, typeof v === 'string' && PLACES[v] ? PLACES[v]() : typeof v === 'string' && k !== 'anchor' && k !== 'area' ? evalAt(item, extra, v, [...at, 'place', k]) : v]));
+    const placeSrc = typeof o.place === 'string' ? valueOf(item, extra, o.place, [...at, 'place']) : o.place;
+    const place = Object.fromEntries(Object.entries(placeSrc ?? {}).map(([k, v]) => [k, typeof v === 'string' && PLACES[v] ? PLACES[v]() : typeof v === 'string' && k !== 'anchor' && k !== 'area' ? evalAt(item, extra, v, [...at, 'place', k]) : v]));
     const base = { fromSec: r3(from), toSec: r3(to), z: o.z ?? 0 };
     if (o.fadeIn) base.fadeIn = { startSec: r3(from), durSec: evalAt(item, extra, o.fadeIn.dur ?? o.fadeIn, [...at, 'fadeIn']) };
     if (o.slide) base.slide = { startSec: r3(from), durSec: evalAt(item, extra, o.slide.dur, [...at, 'slide', 'dur']), dyPx: evalAt(item, extra, o.slide.dy, [...at, 'slide', 'dy']) };
     if (o.pip) {
       const clip = valueOf(item, extra, o.pip, [...at, 'pip']);
-      overlays.push({ ...base, kind: 'pip', graphic: 'pip', clip: clip?.file, quad: valueOf(item, extra, o.quad, [...at, 'quad']), inSec: o.in ?? 0, speed: o.speed ?? 1 });
+      overlays.push({ ...base, kind: 'pip', graphic: 'pip', clip: clip?.file, quad: valueOf(item, extra, o.quad, [...at, 'quad']), inSec: evalAt(item, extra, o.in ?? 0, [...at, 'in']) ?? 0, speed: evalAt(item, extra, o.speed ?? 1, [...at, 'speed']) ?? 1 });
       return;
     }
     const tpl = String(valueOf(item, extra, o.template ?? '', [...at, 'template']) ?? '');
@@ -258,7 +264,7 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
       overlays.push({ ...base, kind: 'builtin', graphic: b.label(params), builtin: name, params, place: { ...b.place(params), ...place } });
       return;
     }
-    overlays.push({ ...base, kind: 'template', graphic: `${tpl}`, template: tpl, params, animate: o.animate ? valueOf(item, extra, o.animate, [...at, 'animate']) : null, place: { anchor: 'top', ...place } });
+    overlays.push({ ...base, kind: 'template', graphic: `${tpl}`, template: tpl, params, animate: o.animate ? valueOf(item, extra, o.animate, [...at, 'animate']) : null, place });
   };
   const pushEffect = (item, extra, e, at) => {
     if (e.when !== undefined && !evalAt(item, extra, e.when, [...at, 'when'])) return;
@@ -275,11 +281,24 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
       effects: [...(b.effects ?? []), ...(extraShot.effects ?? [])],
     };
   };
+  /** `each: <list expr>` repeats an item once per value, exposed as `each` (e.g. every montage cut). */
+  const expand = (item, extra, x, at, push) => {
+    if (x.each === undefined) return push(item, extra, x, at);
+    const list = evalAt(item, extra, x.each, [...at, 'each']) ?? [];
+    if (!Array.isArray(list)) {
+      const h = here(item, at);
+      problems.push(problem(h.file, h.line, `${at.join('.')}.each: expected a list`, { shot: h.shot }));
+      return undefined;
+    }
+    const { each: _e, ...rest } = x;
+    list.forEach((v, k) => push({ ...item, eachValue: v }, extra, rest, [...at, `each[${k}]`]));
+    return undefined;
+  };
   const emit = (item, extra) => {
     const e = emitsOf(item);
-    e.audio.forEach((a, i) => pushAudio(item, extra, a, ['audio', i]));
-    e.overlays.forEach((o, i) => pushOverlay(item, extra, o, ['overlays', i]));
-    e.effects.forEach((x, i) => pushEffect(item, extra, x, ['effects', i]));
+    e.audio.forEach((a, i) => expand(item, extra, a, ['audio', i], pushAudio));
+    e.overlays.forEach((o, i) => expand(item, extra, o, ['overlays', i], pushOverlay));
+    e.effects.forEach((x, i) => expand(item, extra, x, ['effects', i], pushEffect));
   };
   // Cuts: a sound into every cut after the first (tempo supplies lead + gain).
   const cutSfx = front.cuts?.sfx ?? null;

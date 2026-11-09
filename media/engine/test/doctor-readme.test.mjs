@@ -31,16 +31,17 @@ describe('fonts', () => {
 });
 
 describe('campaign README', () => {
-  const spec = { id: 'demo-pl', title: 'Demo', campaign: 'demo', locale: 'pl' };
-  const rows = [{ id: 'cow', still: true, clip: false, result: false, perfect: false, line: true, quip: false }];
-  it('says what to do next and totals the spend', () => {
-    const text = campaignReadme({ spec, rows, voiceRows: [], music: false, lastRender: null, spend: [{ date: 'd', item: 'clip cow', usd: 0.43 }, { date: 'd', item: 'still', usd: 0.04 }] });
-    assert.match(text, /Generate the missing inputs \(cow\)/);
-    assert.match(text, /\| cow \| yes \| — \|/);
+  const base = { title: 'Demo', campaign: 'demo', locale: 'pl' };
+  const shots = [{ id: 'cow', preset: 'action-verdict', startSec: 0, assets: { clip: { file: '/w/3-clips/cow.mp4', standIn: false }, result: { file: '/c/still.png', standIn: true } } }];
+  it('says what to do next (stand-ins first) and totals the spend', () => {
+    const text = campaignReadme({ ...base, shots, lastRender: null, spend: [{ date: 'd', item: 'clip cow', usd: 0.43 }, { date: 'd', item: 'still', usd: 0.04 }] });
+    assert.match(text, /Generate the inputs still using stand-ins \(cow\.result\)/);
+    assert.match(text, /\| cow \| action-verdict \| 0\.00 s \| clip: cow\.mp4 · result: stand-in \|/);
     assert.match(text, /Total so far: \*\*\$0\.47\*\*/);
   });
-  it('points at the review folder once there is a render', () => {
-    const text = campaignReadme({ spec, rows, voiceRows: [], music: true, lastRender: { file: '/x/demo-pl.inputs.mp4', totalSec: 12.3 }, spend: [] });
+  it('points at the review folder once there is a render and no stand-ins', () => {
+    const real = [{ ...shots[0], assets: { clip: shots[0].assets.clip } }];
+    const text = campaignReadme({ ...base, shots: real, lastRender: { file: '/x/demo-pl.inputs.mp4', totalSec: 12.3 }, spend: [] });
     assert.match(text, /Open `review\/pl\/`/);
     assert.match(text, /demo-pl\.inputs\.mp4` — 12\.30 s/);
   });

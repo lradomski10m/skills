@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="96" viewBox="0 0 420 96">
+<!-- template: { size: [420, 96], params: { value: "number 0..5 (animate it)" }, place: { area: hud-top-right } } -->
+  <defs>
+    <path id="s" d="M38 6 L47 30 L73 31 L53 47 L60 72 L38 58 L16 72 L23 47 L3 31 L29 30 Z"/>
+    <clipPath id="fill"><rect x="0" y="0" width="{{value|fixed:3}}" height="96" transform="scale(80 1)"/></clipPath>
+  </defs>
+  <g fill="#000000" fill-opacity="0.45" stroke="{{colour.text}}" stroke-width="3">
+    <use href="#s" x="10" y="10"/><use href="#s" x="90" y="10"/><use href="#s" x="170" y="10"/><use href="#s" x="250" y="10"/><use href="#s" x="330" y="10"/>
+  </g>
+  <g fill="{{colour.text}}" clip-path="url(#fill)">
+    <use href="#s" x="10" y="10"/><use href="#s" x="90" y="10"/><use href="#s" x="170" y="10"/><use href="#s" x="250" y="10"/><use href="#s" x="330" y="10"/>
+  </g>
+</svg>

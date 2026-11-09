@@ -13,7 +13,7 @@ import { BUILTIN_TEMPLATES_DIR } from '../constants.mjs';
 import { UserError } from '../errors.mjs';
 
 const META_RE = /<!--\s*template:\s*([\s\S]*?)-->/;
-const PH_RE = /\{\{\s*([\w.-]+)((?:\|[\w:.-]+)*)\s*\}\}/g;
+const PH_RE = /\{\{\s*([\w.-]+)((?:\|[\w-]+(?::[^|}]*)?)*)\s*\}\}/g;
 const xml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** Template file for a name: the kit's templates/ first, then the engine's. */
@@ -46,15 +46,19 @@ const FILTERS = {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   },
   pad: (v, n) => String(v).padStart(Number(n ?? 2), '0'),
+  invert: (v) => 1 - Number(v),
+  scale: (v, n) => Number(v) * Number(n ?? 1),
 };
 
 /** Fill placeholders. `vars` = { params…, colour: {…}, font: { family } }. Pure. */
 export function fill(svg, vars, name = 'template') {
   return svg.replace(PH_RE, (_, key, filters) => {
     const v = key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), vars);
-    if (v === undefined || v === null) throw new UserError(`${name}: missing value for {{${key}}}`);
-    let out = v;
-    for (const f of filters.split('|').filter(Boolean)) {
+    const list = filters.split('|').filter(Boolean);
+    const dflt = list.find((f) => f.startsWith('default'));
+    if ((v === undefined || v === null) && !dflt) throw new UserError(`${name}: missing value for {{${key}}} (add |default: for an optional one)`);
+    let out = v ?? dflt.slice('default:'.length);
+    for (const f of list.filter((x) => !x.startsWith('default'))) {
       const [fn, arg] = f.split(':');
       if (!FILTERS[fn]) throw new UserError(`${name}: unknown filter |${fn}`);
       out = FILTERS[fn](out, arg);
