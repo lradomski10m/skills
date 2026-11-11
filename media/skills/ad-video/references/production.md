@@ -46,7 +46,23 @@ node "$E" ingest <url|file> --campaign=<id> --as=<role> [--locale=<l>]
 | `clip:<key>` | `3-clips/<key>.mp4` |
 | `music` | `4-music/bed.mp3` |
 
-Images are converted to PNG, audio to MP3, and video is re-muxed to MP4. Keep the prompt
+Images are converted to PNG and audio to MP3. **Clips are normalised**: re-encoded to a
+constant 30 fps, colour tags cleared to unspecified, yuv420p, audio dropped; the command
+prints what it changed (`normalised: 24 fps → 30 fps; colour tags bt709 → unspecified;
+1 audio track dropped`) and copies a clip that already conforms. This matters: BT.709
+tags on some clips make ffmpeg re-initialise the filter graph mid-video, and VFR screen
+recordings make trims drift. A lip-synced `dialogue` clip keeps its sound with
+`--keep-audio`.
+
+Voice flags (`vo:*` only):
+
+| Flag | Does |
+|---|---|
+| `--until=<s>` | cut the take at `<s>` with a 0.15 s fade-out |
+| `--first-utterance` | keep the first reading: cut after the first speech followed by a ≥ 0.35 s pause (ffmpeg `silencedetect`), with the fade; prints what it cut, or keeps a single-reading take whole |
+
+`eleven_v4` often reads a short line 2–5 times in one take; listen, then use
+`--first-utterance` (or `--until` when the pause is too short to detect). Keep the prompt
 that made each file (`<file>.prompt.txt` next to it). Log the spend with
 `node "$E" spend …`.
 
@@ -68,6 +84,50 @@ The engine plans everything:
 - music levelled and ducked under every line, mixed to −14 LUFS.
 
 Never hand-time a render. Change the storyboard, a preset param or a project preset.
+
+Every ffmpeg call runs under a watchdog: the final pass prints progress
+(`final pass 31.0/68.2 s (45%) · 0.9× realtime`), and a pass whose output time stops
+advancing for 120 s (`render.watchdog.stallSec`) is killed with a "stalled" error. That
+is a filter-graph bug, usually in a custom `hooks.mjs` effect, never a reason to wait.
+
+The music bed plays once. If it is shorter than the video, the log says
+`WARNING music bed is 3.20s shorter than the video …`: it fades at its end and the rest
+is silent. Fix the bed (generate longer, or re-cut it); use `music: { loop: true }` only
+for a bed made to loop.
+
+### Transitions
+
+`transition: { name, durSec }` on a shot (or `cuts: { transition: … }` for all):
+`flash-cut`, `dip`, `dip-white`, `whip` (centred on the cut), `dissolve` (crossfade) and
+`slide` (slide-over; `direction: left|right|up|down`). None changes timing; `dissolve`
+and `slide` hold the outgoing shot's last frame against the first `durSec` of the next
+shot, so keep them short (0.2–0.5 s).
+
+### Music cut to picture
+
+When shot lengths change (a regenerated clip, Kling's own shot lengths, a tighter
+edit), the music cues drift off the picture: the silence on the fail, the relief on the
+payoff. Re-cut the bed rather than nudging shots:
+
+1. Measure the beat period first: the run log prints `beats <n> BPM` for the bed, or
+   take it from the music prompt. One beat = 60 / BPM s.
+2. Cut and splice the bed **on whole beats** (or whole bars) only, so the groove never
+   stumbles; add or remove whole beats to move a cue.
+3. Keep the cue times (fail silence, relief start, drop) in `concept.md`, and check them
+   against the plan's shot starts after every re-cut.
+4. Ingest the re-cut bed with `--as=music`; the old one moves to `_alt/`.
+
+### Phone demos with real recordings
+
+- Record the real app once per locale, following the same script and timing.
+- Speed up the waiting parts (uploads, processing) 2.5–8× and play the results in real
+  time; then `hold` on the result (the recording freezes while voice and music go on)
+  and land the stamp on the first frozen frame (`verdict`, `stampAt`).
+- Make every locale's recording match the same timeline (same lengths per segment), so
+  one storyboard serves every locale; only the recording differs, set per locale in a
+  `storyboard.<locale>.md` `## Shot` block (`recording: app-en`).
+- Ingest recordings with `--as=clip:<id>` too: screen recordings are variable frame
+  rate.
 
 The review folder has:
 

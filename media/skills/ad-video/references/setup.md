@@ -5,6 +5,24 @@ dependencies, fonts, the media kit and the work folder, and prints the fix for e
 Accounts and MCP sign-in can't be checked by the engine — check them by calling one cheap
 read-only tool per MCP (fal: `check_account_status`; ElevenLabs: `creative_list_voices`).
 
+## Account checks (every session, and after any re-auth)
+
+- **ElevenLabs workspace.** After any MCP sign-in or re-auth, confirm *which* account is
+  connected: make one estimate-only / read-only call that shows the workspace id and
+  compare it with the project's paid workspace. A re-auth once silently connected a free
+  account (non-commercial licence, then disabled). Don't generate anything until the
+  workspace is right.
+- **fal jobs are charged once running.** `cancel_job` does not stop a job that has
+  started; it is billed in full. Check the parameters (model, length, resolution,
+  count) before `submit_job`, not after.
+
+## Updating
+
+How to update the plugin, the skill copy and the engine clone for each tool: the
+repository README, §Update to the latest version. Claude Code:
+`claude plugin marketplace update lradomski-skills` then
+`claude plugin update media@lradomski-skills`, then `/reload-plugins`.
+
 ## Requirements
 
 | Need | Fix |

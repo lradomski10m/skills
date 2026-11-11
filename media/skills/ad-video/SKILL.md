@@ -123,11 +123,14 @@ pitfalls in `lessons.md`.
    in the prose. Check it with `node "$E" plan <id> --locale=<l>`, which validates and
    prints the timeline with stand-ins.
 3. **Voices** (ElevenLabs `eleven_v4`, emotion tags): one file per line. The user picks
-   takes. Ingest each with `--as=vo:<key> --locale=<l>`.
+   takes. Ingest each with `--as=vo:<key> --locale=<l>` (add `--first-utterance` when a
+   take repeats the line).
 4. **Stills** (Nano Banana): first frames and backgrounds, two options each. Ingest
    with `--as=still:<key>`.
-5. **Clips** (FLUX 3 Max image-to-video, first + last keyframe, timestamped prompt):
-   one continuous clip per beat. Ingest with `--as=clip:<key>`.
+5. **Clips** (`providers.md` §Choosing a video model): Kling 4.0 for people in motion
+   and multi-shot sequences anchored to approved stills; FLUX 3 Max (first + last
+   keyframe, timestamped prompt) for short single actions. One continuous clip per
+   beat. Ingest with `--as=clip:<key>` (normalises frame rate, colour tags, audio).
 6. **Derived stills**: result stills made from a clip's real last frame, and perfect or
    compliant variants. Ingest with `--as=result:<shot>` or `perfect:<shot>`.
 7. **Music** (ElevenLabs Music): offer 2–3 options in

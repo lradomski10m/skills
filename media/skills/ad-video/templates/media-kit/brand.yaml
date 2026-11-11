@@ -26,6 +26,6 @@ colours:                    # take these from the product's real CSS tokens
   chipBg: "rgba(15,20,30,0.72)"
 providers:                  # read by the skill only (references/providers.md)
   images: fal Nano Banana
-  video: fal FLUX 3 Max
+  video: fal Kling 4.0 (people, multi-shot) · FLUX 3 Max (short single actions)
   voice: ElevenLabs
   music: ElevenLabs Music

@@ -70,14 +70,18 @@ Run `node "$E" presets` for the live list with every param.
 
 - **Inputs**: a still (or clip) of a phone with a flat screen area, the screen
   recording (`media-kit/footage/` or `3-clips/`), and the screen's `quad` corners in
-  frame pixels. Optional `timer`.
+  frame pixels. Optional `timer` (`timerTo` compresses it), `hold` (freeze the result
+  while voice and music continue) and `verdict` (a stamp on the first frozen frame;
+  `stampAt` counts back from the shot's end).
 - **Pitfalls**: generate the phone with a plain green or grey screen and keep it still.
-  Measure the quad on the 1080×1920 frame, after cover-scaling.
+  Measure the quad on the 1080×1920 frame, after cover-scaling. Real recordings:
+  `production.md` §Phone demos.
 
 ## Dialogue (`dialogue`)
 
 - **Inputs**: a lip-synced clip that carries its own audio. Make it with a lip-sync
-  model from an ElevenLabs line. An optional lower third.
+  model from an ElevenLabs line. An optional lower third. Ingest it with
+  `--as=clip:<id> --keep-audio` (ingest drops clip audio by default).
 - **Pitfalls**: generate the speech first, then lip-sync to it (video models' accents
   are unreliable). The engine plays the clip's audio and ducks the music under it.
 
