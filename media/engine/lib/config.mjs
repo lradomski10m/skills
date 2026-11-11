@@ -65,12 +65,36 @@ export const CONFIG = Object.freeze({
      * timeline's VO windows (deterministic, no compressor pumping): ramp down
      * `attackSec` before a line, back up over `releaseSec` after it; lines
      * closer than `mergeGapSec` stay ducked between them. Fades out over the
-     * last `fadeOutSec`; a bed shorter than the video loops (logged).
+     * last `fadeOutSec`. A bed shorter than the video plays once, fades over its
+     * own last `fadeOutSec` and is padded with silence (a warning gives the
+     * shortfall); it loops only with storyboard `music: { loop: true }`.
      * Spec `music.levelDb` / `music.duckDb` override.
      */
     music: Object.freeze({ levelDb: -9, duckDb: -10, attackSec: 0.12, releaseSec: 0.35, mergeGapSec: 0.45, fadeOutSec: 0.4 }),
+    /**
+     * Every ffmpeg call runs with `-progress`: it is killed with a clear error when
+     * its output time has not advanced for `stallSec` (a stalled filter graph once
+     * ran 70 min writing 0.5 MB). The final pass prints progress every
+     * `progressEverySec`.
+     */
+    watchdog: Object.freeze({ stallSec: 120, progressEverySec: 10 }),
     /** Burned-in caption font for libass: the bundled bold face (engine/fonts/). */
     captionFont: Object.freeze({ file: 'Inter-Bold.ttf', family: 'Inter' }),
+  }),
+
+  /**
+   * `ingest` conversions. Clips are normalised to constant `render.fps`, untagged
+   * colour (BT.709-tagged model clips concatenated with untagged segments make
+   * ffmpeg re-initialise the filter graph mid-stream, resetting frame-index
+   * filters), yuv420p, no audio — near-lossless (`clipCrf`), since the render
+   * re-encodes once more. Voice takes can be cut (`--until`, `--first-utterance`)
+   * with a `voFadeSec` fade; an utterance ends at a pause of `minGapSec` below
+   * `noiseDb`.
+   */
+  ingest: Object.freeze({
+    clipCrf: 12,
+    voFadeSec: 0.15,
+    utterance: Object.freeze({ noiseDb: -35, minGapSec: 0.35, leadingMaxSec: 0.05 }),
   }),
 
   layout: Object.freeze({

@@ -1,7 +1,9 @@
 // Effect and transition catalogue → ffmpeg filter chains on the full-frame base video
 // (global time windows). PURE: each builder returns filtergraph text that maps an
-// input label to an output label. Transitions are timing-neutral effects centred on a
-// cut (`transition:<name>`, params.atSec), so segments never overlap.
+// input label to an output label. Transitions are timing-neutral effects on a cut
+// (`transition:<name>`, params.atSec), so segments never overlap: flash-cut, dip,
+// dip-white and whip are centred on the cut; dissolve and slide start on it and
+// hold the outgoing shot's last frame against the first `durSec` of the incoming one.
 
 import { CONFIG } from '../config.mjs';
 
@@ -23,6 +25,64 @@ export function flashChain(at, alphas = CONFIG.result.syntheticFlash.alphas) {
       return `drawbox=x=0:y=0:w=iw:h=ih:color=white@${alpha}:t=fill:enable='between(t,${fmt(c - frame / 2)},${fmt(c + frame / 2 - 0.001)})'`;
     })
     .join(',');
+}
+
+/** Default length of a transition (s) when the storyboard gives no `durSec`. */
+export const TRANSITION_DEFAULT_SEC = 0.35;
+/** Slide directions: the way the incoming shot moves (`left` = it enters from the right). */
+export const SLIDE_DIRECTIONS = Object.freeze(['left', 'right', 'up', 'down']);
+
+/**
+ * The cut of a transition as a frame index (first frame of the incoming shot) and
+ * its length. Frame indices, not float seconds: the hold must end exactly on the
+ * last outgoing frame. Pure.
+ */
+export function transitionCut(e) {
+  const durSec = Math.max(1 / R.fps, Number(e.params.durSec ?? e.toSec - e.fromSec) || TRANSITION_DEFAULT_SEC);
+  const cutFrame = Math.round(e.params.atSec * R.fps);
+  return { cutFrame, cutSec: cutFrame / R.fps, durSec };
+}
+
+/**
+ * The hold layer of a two-layer transition: the base up to the cut, then its last
+ * (outgoing) frame cloned. It is a branch of the same stream, so it shares the
+ * base's timestamps from t=0 — a late-starting overlay input would drop base frames,
+ * and ffmpeg `xfade` on two trims of one stream mis-times the second input.
+ */
+const holdLayer = (src, cutFrame, stop) => `[${src}]trim=end_frame=${cutFrame},tpad=stop_mode=clone:${stop}`;
+
+/**
+ * Slide-over: the incoming shot slides in over the held outgoing frame (cubic
+ * ease-out). Two branches only — a 3-way split chained over ~13 cuts buffered
+ * without end: the held layer is the background (padded forever, `shortest=1` ends
+ * it with the base) and the live base sits on top, at 0 outside the window. Pure.
+ */
+function slide(e, i, o, k) {
+  const { cutFrame, cutSec, durSec } = transitionCut(e);
+  const dir = e.params.direction ?? 'left';
+  if (!SLIDE_DIRECTIONS.includes(dir)) throw new Error(`transition slide: direction one of ${SLIDE_DIRECTIONS.join(', ')} (got ${dir})`);
+  const left = `pow(1-(t-${fmt(cutSec)})/${fmt(durSec)},3)`;
+  const win = (expr) => `if(between(t,${fmt(cutSec)},${fmt(cutSec + durSec)}),${expr},0)`;
+  const x = { left: win(`main_w*${left}`), right: win(`-main_w*${left}`), up: '0', down: '0' }[dir];
+  const y = { left: '0', right: '0', up: win(`main_h*${left}`), down: win(`-main_h*${left}`) }[dir];
+  return (
+    `[${i}]split[sb${k}][st${k}];` +
+    `${holdLayer(`sb${k}`, cutFrame, 'stop=-1')}[sh${k}];` +
+    `[sh${k}][st${k}]overlay=x='${x}':y='${y}':eval=frame:shortest=1[${o}]`
+  );
+}
+
+/**
+ * Dissolve: the held outgoing frame fades out over the incoming shot, which plays
+ * underneath from the cut — a crossfade with no change to timing. Two branches. Pure.
+ */
+function dissolve(e, i, o, k) {
+  const { cutFrame, cutSec, durSec } = transitionCut(e);
+  return (
+    `[${i}]split[dm${k}][dl${k}];` +
+    `${holdLayer(`dl${k}`, cutFrame, `stop_duration=${fmt(durSec)}`)},format=yuva420p,fade=t=out:st=${fmt(cutSec)}:d=${fmt(durSec)}:alpha=1[df${k}];` +
+    `[dm${k}][df${k}]overlay=eof_action=pass,format=yuv420p[${o}]`
+  );
 }
 
 /**
@@ -84,6 +144,8 @@ export const EFFECTS = Object.freeze({
     const h = Math.max(0.02, (e.toSec - e.fromSec) / 2);
     return `[${i}]eq=brightness='min(1,max(0,1-abs(t-${fmt(c)})/${fmt(h)}))':eval=frame[${o}]`;
   },
+  'transition:dissolve': dissolve,
+  'transition:slide': slide,
   'transition:whip': (e, i, o) => `[${i}]avgblur=sizeX=${e.params.blur ?? 48}:sizeY=1:enable='${between(e.fromSec, e.toSec)}'[${o}]`,
 });
 
@@ -104,13 +166,17 @@ export function effectsGraph(effects, base = 'base', out = 'fx', custom = {}) {
 
 /**
  * Picture-in-picture into a quad (e.g. a phone screen): the clip is scaled to the
- * frame, perspective-warped so its corners land on `quad` (TL, TR, BR, BL in canvas
+ * frame (optionally ended at `outSec` and its last frame held for `hold` s), perspective-warped so its corners land on `quad` (TL, TR, BR, BL in canvas
  * px), and masked by the quad polygon. Pure; `maskIdx` is a gray mask input.
  */
 export function pipChain(o, clipIdx, maskIdx, outL) {
   const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = o.quad;
+  // CFR first (screen recordings are VFR, so trim/setpts would drift); `outSec` ends
+  // the clip and `hold` freezes its last frame for that long.
+  const end = o.outSec != null ? `:end=${fmt(o.outSec)}` : '';
+  const hold = o.hold > 0 ? `tpad=stop_mode=clone:stop_duration=${fmt(o.hold)},` : '';
   return (
-    `[${clipIdx}:v]trim=start=${fmt(o.inSec ?? 0)},setpts=(PTS-STARTPTS)/${fmt(o.speed ?? 1)}+${fmt(o.fromSec)}/TB,` +
+    `[${clipIdx}:v]fps=${R.fps},trim=start=${fmt(o.inSec ?? 0)}${end},setpts=(PTS-STARTPTS)/${fmt(o.speed ?? 1)}+${fmt(o.fromSec)}/TB,${hold}` +
     `scale=${R.width}:${R.height},format=rgba,` +
     `perspective=x0=${x0}:y0=${y0}:x1=${x1}:y1=${y1}:x2=${x3}:y2=${y3}:x3=${x2}:y3=${y2}:sense=destination[pw${outL}];` +
     `[${maskIdx}:v]format=gray[pm${outL}];[pw${outL}][pm${outL}]alphamerge[${outL}]`

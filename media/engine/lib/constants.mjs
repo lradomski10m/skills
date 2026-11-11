@@ -178,6 +178,9 @@ export const CLI = Object.freeze({
     KIT: 'kit',
     WORK: 'work',
     CAMPAIGN: 'campaign',
+    UNTIL: 'until',
+    FIRST_UTTERANCE: 'first-utterance',
+    KEEP_AUDIO: 'keep-audio',
     INSTALL_FONTS: 'install-fonts',
   }),
 });

@@ -9,6 +9,7 @@ import { CONFIG } from '../config.mjs';
 import { BUILTIN_GRAPHIC, BUS } from '../constants.mjs';
 import { UserError } from '../errors.mjs';
 import { BUILTINS, PLACES } from './builtins.mjs';
+import { TRANSITION_DEFAULT_SEC } from './effects.mjs';
 import { evaluate, ExprError } from './expr.mjs';
 import { PLANNERS } from './planners.mjs';
 import { shotParams } from './presets.mjs';
@@ -52,6 +53,20 @@ async function resolveParam(decl, value, ctx) {
   }
 }
 
+/** Two-layer transitions start on the cut (the outgoing frame is held); the rest are centred on it. */
+const STARTS_ON_CUT = Object.freeze(['dissolve', 'slide']);
+const CENTRED_DEFAULT_SEC = 0.2;
+
+/** The effect for a `transition:` on the cut at `atSec` (global). Pure. */
+export function transitionEffect(tr, atSec) {
+  if (STARTS_ON_CUT.includes(tr.name)) {
+    const d = tr.durSec ?? TRANSITION_DEFAULT_SEC;
+    return { name: `transition:${tr.name}`, fromSec: r3(atSec), toSec: r3(atSec + d), params: { ...tr, durSec: d, atSec: r3(atSec) } };
+  }
+  const d = tr.durSec ?? CENTRED_DEFAULT_SEC;
+  return { name: `transition:${tr.name}`, fromSec: r3(atSec - d / 2), toSec: r3(atSec + d / 2), params: { ...tr, atSec: r3(atSec) } };
+}
+
 export async function compose(sb, { presets, ctx, only = null, withEnd = true }) {
   const problems = [];
   const front = sb.front;
@@ -60,7 +75,14 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
   const globals = { shots: { count: 0, end: 0 }, total: 0 };
   const items = [];
 
-  const asShot = (id, fields, lineOf = () => sb.frontLineOf([id])) => ({ id, title: id, line: lineOf([]), fields, lineOf, file: sb.file });
+  // Front-matter items (hook, end, campaign-wide overlays) report the file that set the
+  // key: a locale overlay (storyboard.<locale>.md) may override it.
+  const fileOfFront = (p) => sb.frontFileOf?.(p) ?? sb.file;
+  const asShot = (id, fields, key = null) => {
+    const lineOf = key ? (p) => sb.frontLineOf([key, ...p]) : (p) => sb.frontLineOf(p.length ? p : [id]);
+    const fileOf = key ? (p) => fileOfFront([key, ...p]) : (p) => fileOfFront(p);
+    return { id, title: id, line: lineOf([]), fields, lineOf, fileOf, file: fileOf([]) };
+  };
   const all = sb.shots.filter((s) => !only || s.id === only);
   if (only && !all.length) throw new UserError(`--only: no shot "${only}" (have: ${sb.shots.map((s) => s.id).join(', ')})`);
 
@@ -73,9 +95,9 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
     }
     return { shot, preset, role, params: shotParams(shot, preset, problems) };
   };
-  const hookItem = front.hook ? prepare(asShot('hook', { preset: 'hook-title', ...front.hook }, (p) => sb.frontLineOf(['hook', ...p])), 'hook') : null;
+  const hookItem = front.hook ? prepare(asShot('hook', { preset: 'hook-title', ...front.hook }, 'hook'), 'hook') : null;
   const shotItems = all.map((s) => prepare(s, 'shot'));
-  const endItem = withEnd && front.end && !only ? prepare(asShot('end', front.end, (p) => sb.frontLineOf(['end', ...p])), 'end') : null;
+  const endItem = withEnd && front.end && !only ? prepare(asShot('end', front.end, 'end'), 'end') : null;
   if (problems.length) throw new SourceError(problems);
 
   /** Scope resolver for one item. */
@@ -124,7 +146,7 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
         return undefined;
     }
   };
-  const here = (item, at) => ({ file: item.shot.file, line: item.shot.lineOf(at), shot: item.shot.id });
+  const here = (item, at) => ({ file: item.shot.fileOf?.(at) ?? item.shot.file, line: item.shot.lineOf(at), shot: item.shot.id });
   const evalAt = (item, extra, expr, at) => {
     try {
       return evaluate(expr, scopeFor(item, extra), { beats: beats?.beats?.map((b) => b - item.start) });
@@ -249,7 +271,20 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
     if (o.slide) base.slide = { startSec: r3(from), durSec: evalAt(item, extra, o.slide.dur, [...at, 'slide', 'dur']), dyPx: evalAt(item, extra, o.slide.dy, [...at, 'slide', 'dy']) };
     if (o.pip) {
       const clip = valueOf(item, extra, o.pip, [...at, 'pip']);
-      overlays.push({ ...base, kind: 'pip', graphic: 'pip', clip: clip?.file, quad: valueOf(item, extra, o.quad, [...at, 'quad']), inSec: evalAt(item, extra, o.in ?? 0, [...at, 'in']) ?? 0, speed: evalAt(item, extra, o.speed ?? 1, [...at, 'speed']) ?? 1 });
+      // `out` ends the clip; `hold` freezes its last frame that long (the clip then plays once instead of looping).
+      const outSec = o.out !== undefined ? evalAt(item, extra, o.out, [...at, 'out']) : null;
+      const hold = o.hold !== undefined ? evalAt(item, extra, o.hold, [...at, 'hold']) ?? 0 : 0;
+      overlays.push({
+        ...base,
+        kind: 'pip',
+        graphic: 'pip',
+        clip: clip?.file,
+        quad: valueOf(item, extra, o.quad, [...at, 'quad']),
+        inSec: evalAt(item, extra, o.in ?? 0, [...at, 'in']) ?? 0,
+        ...(outSec != null ? { outSec: r3(outSec) } : {}),
+        ...(hold > 0 ? { hold: r3(hold) } : {}),
+        speed: evalAt(item, extra, o.speed ?? 1, [...at, 'speed']) ?? 1,
+      });
       return;
     }
     const tpl = String(valueOf(item, extra, o.template ?? '', [...at, 'template']) ?? '');
@@ -314,7 +349,7 @@ export async function compose(sb, { presets, ctx, only = null, withEnd = true })
         if (item.start > 0) audio.push({ file: ctx.sfx(cutSfx), atSec: r3(Math.max(0, item.start - lead)), bus: BUS.SFX, gain: front.cuts.gain ?? tempo.whoosh.gain, label: cutSfx });
       }
       const tr = item.shot.fields.transition ?? front.cuts?.transition;
-      if (tr && tr.name !== 'cut') effects.push({ name: `transition:${tr.name}`, fromSec: r3(item.start - (tr.durSec ?? 0.2) / 2), toSec: r3(item.start + (tr.durSec ?? 0.2) / 2), params: { ...tr, atSec: r3(item.start) } });
+      if (tr && tr.name !== 'cut') effects.push(transitionEffect(tr, item.start));
     }
     emit(item, item.extra);
   }

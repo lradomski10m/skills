@@ -5,7 +5,7 @@
 //   cli.mjs run <campaign | storyboard.md> --locale=<l> [--offline] [--dry-run] [--only=<shot>]
 //   cli.mjs plan <campaign | storyboard.md> --locale=<l>          resolve the timeline, print it, no render
 //   cli.mjs review <campaign | storyboard.md> --locale=<l> [--offline]
-//   cli.mjs ingest <url|file> --campaign=<id> --as=<kind>:<target> [--locale=<l>]
+//   cli.mjs ingest <url|file> --campaign=<id> --as=<kind>:<target> [--locale=<l>] [--until=<sec>] [--first-utterance] [--keep-audio]
 //   cli.mjs spend --campaign=<id> --item="<what>" --usd=<n> [--via=<tool>]
 //   cli.mjs presets                                               built-in + kit presets with their params
 //   cli.mjs migrate-kit                                           0.1.x JSON kit + specs → YAML + storyboard.md
@@ -36,6 +36,8 @@ const USAGE = `Usage: cli.mjs <command> [options]
   ingest <url|file> --${F.CAMPAIGN}=<id> --${F.AS}=<kind>:<target> [--${F.LOCALE}=<code>]
       kinds: clip:<id> | still:<key> | result:<shot> | perfect:<shot> | intro:<shot> | vo:<key> | music[:<name>]
       → 1-voice/<locale>/, 2-stills/, 3-clips/, 4-music/; a replaced file moves to _alt/
+      clips are normalised (CFR at the render fps, untagged colour, yuv420p, no audio; --${F.KEEP_AUDIO} keeps a dialogue clip's sound)
+      vo only: --${F.UNTIL}=<sec> (cut + fade)  --${F.FIRST_UTTERANCE} (keep the first reading of a repeated line)
   spend --${F.CAMPAIGN}=<id> --item="<what>" --usd=<n> [--via=<tool>]   log a generation paid through an MCP tool
   presets                                   list presets (built-in + media-kit/presets) with their params
   migrate-kit                               convert a 0.1.x JSON media kit + campaign specs to YAML + storyboard.md
@@ -60,6 +62,9 @@ function parse(argv) {
       [F.KIT]: { type: 'string' },
       [F.WORK]: { type: 'string' },
       [F.CAMPAIGN]: { type: 'string' },
+      [F.UNTIL]: { type: 'string' },
+      [F.FIRST_UTTERANCE]: { type: 'boolean', default: false },
+      [F.KEEP_AUDIO]: { type: 'boolean', default: false },
       item: { type: 'string' },
       usd: { type: 'string' },
       via: { type: 'string' },
@@ -118,7 +123,15 @@ async function main() {
     if (!values[F.CAMPAIGN]) throw new UserError(`ingest needs --${F.CAMPAIGN}=<id>`);
     const { ingest } = await import('./lib/ingest.mjs');
     if (String(values[F.AS] ?? '').startsWith('vo:') && !values[F.LOCALE]) throw new UserError(`ingest of a voice line needs --${F.LOCALE}=<code>`);
-    await ingest({ source: target, paths: workPaths({ workRoot, campaign: values[F.CAMPAIGN], locale: values[F.LOCALE] ?? '' }), as: values[F.AS] });
+    const until = values[F.UNTIL] === undefined ? null : Number(values[F.UNTIL]);
+    await ingest({
+      source: target,
+      paths: workPaths({ workRoot, campaign: values[F.CAMPAIGN], locale: values[F.LOCALE] ?? '' }),
+      as: values[F.AS],
+      until,
+      firstUtterance: values[F.FIRST_UTTERANCE],
+      keepAudio: values[F.KEEP_AUDIO],
+    });
     return 0;
   }
 
