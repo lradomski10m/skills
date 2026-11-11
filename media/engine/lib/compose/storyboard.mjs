@@ -1,7 +1,7 @@
 // storyboard.md: YAML front matter (campaign globals) + `## Text` locale table +
 // one `## Shot <id> — <title>` section per shot with a fenced ```yaml block. Prose
-// is ignored. Optional `storyboard.<locale>.md` overlays (text + shot overrides) and
-// `extends:` subsets (cut-downs). Every problem is reported with file:line.
+// is ignored. Optional `storyboard.<locale>.md` overlays (front matter + text + shot
+// overrides) and `extends:` subsets (cut-downs). Every problem is reported with file:line.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,6 +17,30 @@ export const FRONT_KEYS = Object.freeze([
   'campaign', 'title', 'locales', 'tempo', 'tempoOverrides', 'cuts', 'hook', 'brandBug', 'overlays',
   'music', 'end', 'captions', 'extends', 'shots', 'source', 'id',
 ]);
+
+/**
+ * Front-matter keys a locale overlay (`storyboard.<locale>.md`) may set; they deep-merge
+ * over the storyboard's for that locale (e.g. a locale-specific end-card sheet or bed).
+ */
+export const OVERLAY_FRONT_KEYS = Object.freeze(['title', 'tempo', 'tempoOverrides', 'cuts', 'hook', 'brandBug', 'overlays', 'music', 'end', 'captions']);
+
+/**
+ * Problems with a locale overlay's front matter: identity keys can't change per locale,
+ * and unknown keys are typos. Pure.
+ */
+export function overlayFrontProblems(front, file, lineOf) {
+  return Object.keys(front)
+    .filter((k) => !OVERLAY_FRONT_KEYS.includes(k))
+    .map((k) =>
+      problem(
+        file,
+        lineOf([k]),
+        FRONT_KEYS.includes(k)
+          ? `${k}: cannot be overridden per locale (a locale overlay may set ${OVERLAY_FRONT_KEYS.join(', ')})`
+          : `unknown front-matter key "${k}" (a locale overlay may set ${OVERLAY_FRONT_KEYS.join(', ')})`,
+      ),
+    );
+}
 
 function readFile(file, problems) {
   try {
@@ -123,12 +147,24 @@ export function loadStoryboard(file, { locale }) {
   }
   if (!sb.shots.length) problems.push(problem(abs, null, 'no "## Shot <id>" sections'));
 
-  // Locale overlay: storyboard.<locale>.md → text + shot field overrides.
+  // Locale overlay: storyboard.<locale>.md → front-matter, text and shot field overrides.
   const text = Object.fromEntries(Object.entries(sb.text).map(([k, v]) => [k, { ...v }]));
+  let mergedFront = front;
+  let frontLineOf = sb.frontLineOf;
+  let frontFileOf = () => abs;
   const overlayFile = locale ? path.join(path.dirname(abs), `${path.basename(abs, '.md')}.${locale}.md`) : null;
   if (overlayFile && fs.existsSync(overlayFile)) {
     const ov = parseStoryboardFile(overlayFile, problems, { requireFront: false });
     if (ov) {
+      const keys = Object.keys(ov.front);
+      if (keys.length) {
+        problems.push(...overlayFrontProblems(ov.front, overlayFile, ov.frontLineOf));
+        const allowed = Object.fromEntries(Object.entries(ov.front).filter(([k]) => OVERLAY_FRONT_KEYS.includes(k)));
+        mergedFront = deepMerge(front, allowed);
+        const own = (p) => p.length > 0 && Object.hasOwn(allowed, p[0]);
+        frontLineOf = (p) => (own(p) ? ov.frontLineOf(p) : sb.frontLineOf(p));
+        frontFileOf = (p) => (own(p) ? overlayFile : abs);
+      }
       for (const [k, v] of Object.entries(ov.text)) {
         const value = v.values[locale] ?? v.values.text ?? Object.values(v.values)[0];
         text[k] = { line: v.line, file: overlayFile, values: { ...(text[k]?.values ?? {}), [locale]: value } };
@@ -147,5 +183,5 @@ export function loadStoryboard(file, { locale }) {
     }
   }
   if (problems.length) throw new SourceError(problems);
-  return { file: abs, dir: path.dirname(abs), locale, front, text, shots: sb.shots, frontLineOf: sb.frontLineOf };
+  return { file: abs, dir: path.dirname(abs), locale, front: mergedFront, text, shots: sb.shots, frontLineOf, frontFileOf };
 }

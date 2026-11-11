@@ -47,11 +47,13 @@ media-work/<campaign>/     scratch:   1-voice/<locale>  2-stills  3-clips  4-mus
 
 ```
 node engine/cli.mjs doctor
-node engine/cli.mjs plan <campaign> --locale=<l>                 # validate + print the timeline (free)
+node engine/cli.mjs plan <campaign> --locale=<l>                 # validate + print the timeline, lint templates (free)
 node engine/cli.mjs run <campaign> --locale=<l>                  # assemble from media-work; missing → stand-ins (free)
 node engine/cli.mjs run <campaign> --locale=<l> --offline        # stand-ins for everything (free)
 node engine/cli.mjs review <campaign> --locale=<l>
 node engine/cli.mjs ingest <url|file> --campaign=<id> --as=<kind>:<target> [--locale=<l>]
+                         # clips: normalised (CFR, untagged colour, no audio; --keep-audio for dialogue)
+                         # voice: --until=<sec> | --first-utterance (cut a repeated take)
 node engine/cli.mjs spend --campaign=<id> --item="…" --usd=<n>   # log an MCP generation
 node engine/cli.mjs presets                                      # built-in + kit presets and their params
 node engine/cli.mjs migrate-kit                                  # 0.1.x JSON kit → YAML + storyboard.md

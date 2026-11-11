@@ -29,7 +29,7 @@ lib/compose/
   compose.mjs           — storyboard → timeline (segments, overlays, audio, effects)
   builtins.mjs, draw.mjs — built-in graphics and drawing every overlay/card (cached)
   templates.mjs         — SVG templates: {{placeholders|filters}}, fit, keyframes, resvg
-  effects.mjs           — windowed effects + transitions, PiP into a quad
+  effects.mjs           — windowed effects + transitions (incl. two-layer dissolve/slide), PiP into a quad (+ hold)
   beats.mjs             — music beat / downbeat / drop detection (+ manual override)
   text.mjs              — text table lookup, voice speeds
 lib/
@@ -42,7 +42,9 @@ lib/
   pipeline.mjs          — assets, analysis, compose, render, review; cache
   kit.mjs               — YAML media kit loader
   migrate.mjs           — 0.1.x JSON kit + specs → YAML kit + storyboard.md
-  inputs.mjs, ingest.mjs, review.mjs, readme.mjs, doctor.mjs, runs.mjs, cache.mjs, hash.mjs
+  ingest.mjs            — ingest by role: clip normalisation (CFR, untagged, no audio), voice cuts
+  media/ffmpeg.mjs      — ffmpeg/ffprobe wrappers; every call under the -progress stall watchdog
+  inputs.mjs, review.mjs, readme.mjs, doctor.mjs, runs.mjs, cache.mjs, hash.mjs
   providers/offline.mjs — synthetic stand-ins (say/espeak, tone clips, solid stills)
 test/                   — node:test; fixtures: golden timelines, the anonymized worked
                           example (campaigns/animals) and the all-primitives showcase
@@ -66,6 +68,16 @@ test/                   — node:test; fixtures: golden timelines, the anonymize
 - Cache keys include every input that changes the output and nothing else. Bump a
   stage's format version (e.g. `ANALYSIS_FORMAT`) when its output changes.
 - Overlays stay inside the 9:16 safe area (named areas in `config.mjs`).
+- Every clip enters through `ingest`, which normalises it (constant `render.fps`,
+  colour tags unspecified, yuv420p, no audio). Mixed colour tags in the concatenated
+  base make ffmpeg re-initialise the filter graph mid-stream and reset frame-index
+  filters; VFR makes trim/setpts drift.
+- Filter graphs on the base: cut by frame index, keep every branch on the base's
+  timestamps from t=0, at most two `split` branches per effect (chained 3-way splits
+  buffer without end), never `xfade` two trims of one stream. A graph that stalls is
+  killed by the watchdog (`render.watchdog.stallSec`).
+- Never loop music silently: a short bed plays once and is padded (warned); loop only
+  on `music.loop`.
 - The A5 golden test (`test/golden.test.mjs`) pins timing to the 0.1.x renders within
   1.5 ms. A timing change that breaks it needs a deliberate fixture refresh
   (`test/tools/capture-golden.mjs`).

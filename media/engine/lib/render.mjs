@@ -259,7 +259,7 @@ export function musicDuckExpr(windows, { duckDb, attackSec, releaseSec }) {
 /**
  * Final pass: inputs are [0] base video, then one input per overlay (looped PNG,
  * PNG frame sequence, or a PiP clip + its mask), then one per audio event, then the
- * optional looped music bed. Effects run on the base before the overlays.
+ * optional music bed (played once and silence-padded, or looped with `music.loop`). Effects run on the base before the overlays.
  * @param {{overlays: object[], audio: object[], effects?: object[], totalSec: number}} tl
  */
 export function finalPassArgs(tl, { captionsFile, music = null, customEffects = {} }, outFile) {
@@ -278,7 +278,8 @@ export function finalPassArgs(tl, { captionsFile, music = null, customEffects = 
   const ordered = [...tl.overlays].map((o, i) => ({ o, i })).sort((a, b) => (a.o.z ?? 0) - (b.o.z ?? 0) || a.i - b.i);
   ordered.forEach(({ o }, k) => {
     if (o.kind === 'pip') {
-      const clipIdx = add('-stream_loop', '-1', '-i', o.clip);
+      // A held PiP (freeze on its last frame) must end; otherwise the clip loops.
+      const clipIdx = o.hold > 0 ? add('-i', o.clip) : add('-stream_loop', '-1', '-i', o.clip);
       const maskIdx = add('-loop', '1', '-t', total, '-i', o.mask);
       graph.push(pipChain(o, clipIdx, maskIdx, `pp${k}`));
       graph.push(`[${v}][pp${k}]overlay=x=0:y=0:eof_action=pass:enable='between(t,${fmt(o.fromSec)},${fmt(o.toSec)})'[ov${k}]`);
@@ -333,11 +334,15 @@ export function finalPassArgs(tl, { captionsFile, music = null, customEffects = 
 
   const mixInputs = [`[${BUS.VOICE}]`, `[${BUS.SFX}]`];
   if (music) {
-    // Looped bed: level against the voice, duck under every VO window, fade out with the video.
-    const musicIdx = add('-stream_loop', '-1', '-i', music.file);
+    // The bed: level against the voice, duck under every VO window, fade out with the video.
+    // A bed shorter than the video plays once, fades at its own end and is padded with
+    // silence; it is looped only on request (`music.loop`).
+    const short = !music.loop && music.bedSec != null && music.bedSec < tl.totalSec;
+    const musicIdx = music.loop ? add('-stream_loop', '-1', '-i', music.file) : add('-i', music.file);
     const fadeSt = fmt(Math.max(0, tl.totalSec - music.fadeOutSec));
+    const bedFade = short ? `afade=t=out:st=${fmt(Math.max(0, music.bedSec - music.fadeOutSec))}:d=${fmt(music.fadeOutSec)},` : '';
     graph.push(
-      `[${musicIdx}:a]aresample=${R.audioRate},aformat=sample_fmts=fltp:channel_layouts=stereo,atrim=duration=${total},` +
+      `[${musicIdx}:a]aresample=${R.audioRate},aformat=sample_fmts=fltp:channel_layouts=stereo,${bedFade}apad,atrim=duration=${total},` +
         `volume=${fmt(music.gainDb)}dB,volume='${musicDuckExpr(music.windows, music)}':eval=frame,` +
         `afade=t=out:st=${fadeSt}:d=${fmt(music.fadeOutSec)}[music]`,
     );
@@ -434,5 +439,8 @@ export async function renderVideo({ tl, runDir, captionsAss, font, music, outFil
   await fs.writeFile(path.join(runDir, FILE.CONCAT_LIST), concatList(segFiles));
   await ffmpeg(['-f', 'concat', '-safe', '0', '-i', FILE.CONCAT_LIST, '-c', 'copy', FILE.BASE_VIDEO], { cwd: runDir });
   log(`render final pass (${tl.effects?.length ? 'effects, ' : ''}overlays${captionsAss ? ', captions' : ''}, audio mix)`);
-  await ffmpeg(finalPassArgs(tl, { captionsFile: captionsAss ? FILE.CAPTIONS : null, music, customEffects }, outFile), { cwd: runDir });
+  await ffmpeg(finalPassArgs(tl, { captionsFile: captionsAss ? FILE.CAPTIONS : null, music, customEffects }, outFile), {
+    cwd: runDir,
+    progress: { label: 'final pass', totalSec: tl.totalSec, log },
+  });
 }

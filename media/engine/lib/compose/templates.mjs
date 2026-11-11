@@ -67,6 +67,33 @@ export function fill(svg, vars, name = 'template') {
   });
 }
 
+const HIDDEN_RE = /\b(?:display="none"|visibility="hidden"|opacity="0")/;
+const decode = (t) => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n))).replace(/&amp;/g, '&');
+
+/**
+ * Words a template draws that are not `{{param}}`s: the visible content of every
+ * <text> (with its <tspan>s) after placeholders are removed, plus `|default:` values.
+ * A hard-coded word renders in every locale ("teraz" leaked into an English cut), so
+ * `plan` warns about each. Digits, symbols and punctuation are fine. Pure.
+ */
+export function templateTextLeaks(svg) {
+  const src = String(svg).replace(/<!--[\s\S]*?-->/g, '').replace(/<(title|desc|metadata|style|script)\b[\s\S]*?<\/\1>/g, '');
+  const leaks = [];
+  for (const m of src.matchAll(/<text\b([^>]*)>([\s\S]*?)<\/text>/g)) {
+    if (HIDDEN_RE.test(m[1])) continue;
+    const visible = decode(m[2].replace(/<tspan\b[^>]*(?:display="none"|visibility="hidden")[^>]*>[\s\S]*?<\/tspan>/g, '').replace(/<[^>]+>/g, ' ').replace(PH_RE, ' '))
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (/\p{L}/u.test(visible)) leaks.push(visible);
+  }
+  for (const m of src.matchAll(PH_RE)) {
+    const dflt = m[2].split('|').find((f) => f.startsWith('default:'));
+    const value = dflt?.slice('default:'.length) ?? '';
+    if (/\p{L}/u.test(value)) leaks.push(`{{${m[1]}|default:${value}}}`);
+  }
+  return leaks;
+}
+
 const resvgOpts = (fontFiles, family) => ({ font: { fontFiles, loadSystemFonts: false, defaultFontFamily: family }, fitTo: { mode: 'original' } });
 
 /** Measured width of one <text> element (rendered alone in the same canvas). */

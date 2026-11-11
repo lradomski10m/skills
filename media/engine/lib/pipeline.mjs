@@ -24,6 +24,7 @@ import { analyseBeats, manualBeats } from './compose/beats.mjs';
 import { compose } from './compose/compose.mjs';
 import { drawTimeline } from './compose/draw.mjs';
 import { loadPresets } from './compose/presets.mjs';
+import { findTemplate, templateTextLeaks } from './compose/templates.mjs';
 import { makeText, voiceSpeed } from './compose/text.mjs';
 import { BUS } from './constants.mjs';
 
@@ -230,6 +231,9 @@ async function makeCtx({ sb, kit, paths, offline, store, log }) {
   return ctx;
 }
 
+/** Seconds of video left without music when the bed plays once (0 if it is long enough). Pure. */
+export const musicShortfall = (bedSec, totalSec) => Math.max(0, Math.round((totalSec - bedSec) * 1000) / 1000);
+
 /** Music bed for the final mix (levelled against the run's measured voice, ducked under every line), or null. */
 async function planMusic(sb, ctx, tl, log) {
   const m0 = sb.front.music;
@@ -247,12 +251,46 @@ async function planMusic(sb, ctx, tl, log) {
   const bedSec = await mediaDuration(bed.file);
   const gainDb = musicGainDb({ bedLufs, voiceLufs, levelDb: m.levelDb });
   const windows = duckWindows(tl.audio, m);
+  const loop = m0.loop === true;
   log(
     `  music   ${path.basename(bed.file)} ${bedSec.toFixed(1)}s, bed ${bedLufs.toFixed(1)} LUFS → ${gainDb.toFixed(1)} dB ` +
-      `(VO ref ${voiceLufs.toFixed(1)} LUFS, level ${m.levelDb} dB, duck ${m.duckDb} dB, ${windows.length} VO windows)` +
-      (bedSec < tl.totalSec ? ` — bed shorter than the video (${tl.totalSec.toFixed(1)}s): looping` : ''),
+      `(VO ref ${voiceLufs.toFixed(1)} LUFS, level ${m.levelDb} dB, duck ${m.duckDb} dB, ${windows.length} VO windows)`,
   );
-  return { file: bed.file, gainDb, windows, duckDb: m.duckDb, attackSec: m.attackSec, releaseSec: m.releaseSec, fadeOutSec: m.fadeOutSec };
+  const shortfall = musicShortfall(bedSec, tl.totalSec);
+  if (shortfall > 0) {
+    log(
+      loop
+        ? `  music   bed is ${shortfall.toFixed(2)}s shorter than the video (${tl.totalSec.toFixed(2)}s) — looping (music.loop: true)`
+        : `  WARNING music bed is ${shortfall.toFixed(2)}s shorter than the video (${tl.totalSec.toFixed(2)}s): it plays once, fades at ${bedSec.toFixed(2)}s, then silence. ` +
+            'Generate a longer bed, re-cut it, or set music: { loop: true }.',
+    );
+  }
+  return { file: bed.file, bedSec, loop, gainDb, windows, duckDb: m.duckDb, attackSec: m.attackSec, releaseSec: m.releaseSec, fadeOutSec: m.fadeOutSec };
+}
+
+/**
+ * Template lint: every SVG template the timeline uses, checked for visible text that
+ * is not a {{param}} (a hard-coded word renders in every locale). Warnings only.
+ */
+export async function templateWarnings(tl, kit) {
+  const names = [...new Set(tl.overlays.filter((o) => o.kind === 'template' && o.template).map((o) => o.template))];
+  const out = [];
+  for (const name of names) {
+    let file;
+    try {
+      file = findTemplate(name, kit.templatesDir);
+    } catch {
+      continue; // a missing template is reported when it is drawn
+    }
+    const leaks = templateTextLeaks(await fs.readFile(file, 'utf8'));
+    if (leaks.length) {
+      out.push(
+        `  WARNING template ${name} (${file}): hard-coded text ${leaks.map((l) => JSON.stringify(l)).join(', ')} — ` +
+          'it renders in every locale; make it a {{param}} filled from ## Text or copy/<locale>.yaml',
+      );
+    }
+  }
+  return out;
 }
 
 /** Plan (and unless planOnly, render) one campaign/locale. */
@@ -267,6 +305,7 @@ export async function runCampaign(sb, { kit, paths, offline = false, dryRun = fa
   log('[compose]');
   let tl = await compose(sb, { presets, ctx, only, withEnd: !only });
   if (hooks.transform) tl = (await hooks.transform(tl, ctx)) ?? tl;
+  for (const w of await templateWarnings(tl, kit)) log(w);
   const problems = checkTimeline(tl);
   if (problems.length) throw new UserError(`timeline problems:\n  ${problems.join('\n  ')}`);
   const runName = runNameFor(`${sb.front.campaign}-${sb.locale}`, { onlyShot: only, inputs: !offline, offline });
