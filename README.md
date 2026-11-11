@@ -74,6 +74,52 @@ bring it over (not tested). Skill-only alternative: `npx skills add lradomski10m
 plus the engine clone above and the MCP servers from
 [`media/mcp_config.json`](media/mcp_config.json).
 
+## Update to the latest version
+
+Check the installed version first: `claude plugin list` (Claude Code), or `git log -1` /
+`media/package.json` in your clone (Codex, Antigravity). Then:
+
+### Claude Code
+
+Third-party marketplaces do not auto-update by default, so update by hand. In your shell:
+
+```
+claude plugin marketplace update lradomski-skills
+claude plugin update media@lradomski-skills
+```
+
+or inside a session: `/plugin marketplace update lradomski-skills`, then `/plugin` →
+**Installed** → `media` → **Update now** (or **Marketplaces** → `lradomski-skills` →
+**Update marketplace**, which updates every plugin installed from it). A running
+session keeps the version it loaded: run `/reload-plugins` or start a new session. To
+get updates automatically from now on: `/plugin` → **Marketplaces** →
+`lradomski-skills` → **Enable auto-update**.
+
+### Codex
+
+The skill is a copy and the engine is a clone; update both:
+
+```
+cd ~/.local/share/lradomski-skills && git pull
+cd media && npm ci
+npx skills update ad-video                          # the skill copy (-g if you installed with -g)
+```
+
+(If `skills update` does not pick it up, re-run the install command,
+`npx skills add lradomski10m/skills -a codex`.)
+
+### Antigravity
+
+```
+cd ~/.local/share/lradomski-skills && git pull
+cd media && npm ci
+agy plugin install ~/.local/share/lradomski-skills/media
+```
+
+If `agy` reports the plugin is already installed, run `agy plugin uninstall media` and
+install again. Skill-only installs: `npx skills update ad-video`
+after the `git pull` + `npm ci`.
+
 ## Prerequisites
 
 | Need | Notes |
@@ -90,7 +136,8 @@ miss.
 
 | Item | Cost |
 |---|---|
-| Video clip, FLUX 3 Max, 720p, ~7 s | ~$0.43 (discount windows vary) |
+| Video clip, FLUX 3 Max, 720p, ~7 s (short single actions) | ~$0.43 (discount windows vary) |
+| Video clip, Kling 4.0 (people in motion, multi-shot), per second | ~$0.157 (3–30 s per job) |
 | Still or image edit (Nano Banana) | a few cents |
 | Voice line (ElevenLabs) | a few cents of plan credits |
 | Music track, ~35 s (ElevenLabs) | ~$0.18 |
@@ -98,6 +145,58 @@ miss.
 
 Assembly is local and free. The skill states the price before every paid step and asks
 first.
+
+## Changelog
+
+### 0.3.0
+
+Lessons from a 68 s, 17-shot, two-locale production.
+
+- **Clip normalisation on ingest**: `ingest --as=clip:*` re-encodes to constant 30 fps,
+  clears colour tags, yuv420p, drops audio (`--keep-audio` for lip-synced dialogue) and
+  prints what changed; a conformant clip is copied.
+- **Music**: a bed shorter than the video plays once, fades at its end and is padded
+  with silence, with a warning giving the shortfall. Looping only with
+  `music: { loop: true }`.
+- **Render watchdog**: every ffmpeg call runs with `-progress`; the final pass prints
+  progress, and a pass whose output stops advancing for 120 s
+  (`render.watchdog.stallSec`) is killed with a clear error.
+- **Transitions `dissolve` and `slide`** (`direction: left|right|up|down`), safe to chain
+  over many cuts.
+- **Locale overlays override front matter**: `storyboard.<locale>.md` may set `end`,
+  `music`, `brandBug`, `cuts`, `hook`, `overlays`, `title`, `tempo`, `tempoOverrides`,
+  `captions` for that locale.
+- **`phone-demo` hold + stamp**: `hold` freezes the recording's last frame while audio
+  continues; `verdict` / `stampAt` / `clerk` / `quip` / `timerTo`. A `pip` overlay takes
+  `out` and `hold`.
+- **Voice ingest**: `--until=<sec>` and `--first-utterance` (cut a take that repeats the
+  line).
+- **Template lint** in `plan`/`run`: warns about visible SVG text that is not a
+  `{{param}}`.
+- Docs: Kling 4.0 for people in motion, account checks after re-auth, music cut to
+  picture, phone demos with real recordings, how to update.
+
+### 0.2.0
+
+The composition engine: `storyboard.md`, presets and SVG templates; YAML media kit.
+
+## Upgrading from 0.2.x
+
+Update as above (Claude Code: `claude plugin update media@lradomski-skills`). Storyboards
+and kits need no changes. What behaves differently:
+
+- **Music beds no longer loop.** A bed shorter than the video now ends in silence (with
+  a warning). Generate a longer bed or add `music: { loop: true }` to keep 0.2.x
+  behaviour.
+- **Ingest re-encodes clips.** Clips ingested from now on are normalised; re-ingest
+  clips you placed by hand or with 0.2.x if they come from Kling/Veo (BT.709 tags) or
+  are screen recordings (VFR). A lip-synced `dialogue` clip needs `--keep-audio`.
+- **`slide` / `dissolve`** are built in: a campaign `hooks.mjs` that defines effects with
+  these names still wins, so remove the hook to use the built-ins.
+- **`phone-demo`** is unchanged without `hold`/`verdict`, except that the recording is
+  converted to constant frame rate before trimming.
+- A locale overlay file with front matter was ignored before; its keys now apply (and
+  unknown keys are errors).
 
 ## Upgrading from 0.1.x
 
@@ -114,6 +213,9 @@ and moves the old files to `media-kit/_alt/0.1.x/`. The engine's live generation
 tests and an end-to-end render.)
 
 
+- Update paths outside Claude Code: `npx skills update ad-video` for a skill copy, and
+  re-running `agy plugin install` over an installed plugin (the Claude Code commands are
+  from the Claude Code docs, "Install and manage plugins" → "Keep plugins updated").
 - Claude Code: sign-in (OAuth) for remote MCP servers bundled in a plugin. If `/mcp`
   offers no sign-in, add the servers yourself with `claude mcp add --transport http …`.
 - Antigravity: `agy plugin install <url>` — `agy` 1.4.12 accepts only a directory, and
