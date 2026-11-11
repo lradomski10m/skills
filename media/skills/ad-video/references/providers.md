@@ -8,7 +8,8 @@ provider).
 | Job | Default | Alternatives |
 |---|---|---|
 | Stills + edits (Nano Banana) | fal `fal-ai/nano-banana-2.1` and `/edit` | Google Gemini API image model (Nano Banana family, needs `GEMINI_API_KEY`), Antigravity's built-in image generation |
-| Video clips | fal FLUX 3 Max image-to-video (`image_url` + `end_image_url`) | any fal image-to-video model with first/last keyframes |
+| Video clips: people in motion, multi-shot sequences | fal Kling 4.0 image-to-video (`kling/v4/image-to-video`: `multi_prompt` per shot, up to 8 `middle_image_urls`) | — |
+| Video clips: short single actions (a grin, a tilt, an object) | fal FLUX 3 Max image-to-video (`image_url` + `end_image_url`) | any fal image-to-video model with first/last keyframes |
 | Voice | ElevenLabs `eleven_v4` (emotion tags) | — |
 | Music | ElevenLabs Music | — |
 | Assembly | local engine (ffmpeg + sharp), never paid | — |
@@ -22,7 +23,21 @@ ElevenLabs `creative_get_flow_node_types`); never guess one.
   result URL → `ingest`.
 - Several variations: one `submit_jobs` call, then `wait_for_jobs`.
 - Prices: `get_pricing` / `estimate_cost` only when the user asks or sets a budget.
-- Video: 9:16, 720p, 5–7 s, `generate_audio: false` (the engine owns sound).
+- Video: 9:16, 720p, `generate_audio: false` (the engine owns sound). `ingest` strips any
+  audio track anyway and normalises the clip (constant frame rate, untagged colour).
+
+## Choosing a video model
+
+| Model | Use for | Notes |
+|---|---|---|
+| **Kling 4.0** (`kling/v4/image-to-video`, ~$0.157/s, 3–30 s) | people in motion (walking, running, gestures); a continuous sequence of several shots anchored to approved stills | `multi_prompt`: one prompt per shot; up to 8 `middle_image_urls` keep the character and wardrobe from drifting. Kling sets each shot's length itself (expect ±1–2 s), so cut by detected scene changes, never by the prompt's timing. Slow: 4–6 min per job. |
+| **FLUX 3 Max** (720p, ~7 s) | short single actions: a grin, a head tilt, hair falling, an item dropping | first + last keyframe and a timestamped prompt. Walking comes out as slow motion; don't use it for people moving through a scene. |
+| **Veo 3.1 Fast** (via ElevenLabs, ~$0.12/s) | fallback | a jog came out with a stutter step; check gaits frame by frame. |
+
+Prices change; check with `get_pricing` / `estimate_cost` before quoting. Kling's
+scene cuts: find them with an ffmpeg scene filter
+(`ffmpeg -i clip.mp4 -vf "select='gt(scene,0.3)',showinfo" -f null -`) and set each
+shot's `in`/`out` from the printed `pts_time`s.
 
 ## Google (Gemini API / Antigravity)
 
@@ -38,7 +53,10 @@ ElevenLabs `creative_get_flow_node_types`); never guess one.
 - Speech: `creative_generate_speech` with a `voice_id` from the kit cast (or
   `creative_list_voices`); poll `creative_get_flow_run_status`; download; ingest.
 - Two takes per line by default; the user picks; pin the pick, don't regenerate.
-- Commercial use needs a paid plan (Starter or higher) — check before publishing.
+- Commercial use needs a paid plan (Starter or higher) — check before publishing, and
+  after any MCP re-auth confirm the connected **workspace** (`setup.md` §Account checks).
+- `eleven_v4` often repeats a short line 2–5× in one take, even when the prompt says
+  "said once". Ingest with `--first-utterance` (keeps the first reading) or `--until=<s>`.
 - Music: `creative_generate_in_flow` with the music node; 2–3 options.
 
 ## Costs

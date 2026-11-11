@@ -59,7 +59,7 @@ Same subject, same pose, same expression, same head angle and framing. Replace t
 background with a plain, evenly lit {background}. Keep every detail unchanged. {no-text tail}
 ```
 
-## Montage — slices (FLUX 3 Max)
+## Montage — slices (FLUX 3 Max; Kling 4.0 when people walk or run)
 
 Generate 5 s clips with one clear, continuous motion each; the engine uses ~1 s from
 the middle.
@@ -68,6 +68,21 @@ the middle.
 {look line}. Continuous motion, no cuts. {no-text tail}
 ```
 Vary the camera between slices (wide, close, POV) and keep one look line for all.
+
+## Multi-shot sequence (Kling 4.0, image-to-video)
+
+People in motion, or several connected shots of one character. Parameters:
+`image_url` = the approved first still, up to 8 `middle_image_urls` = approved stills of
+the same character/wardrobe (one per shot works well), `multi_prompt` = one entry per
+shot, 9:16, no audio, total 3–30 s.
+```
+Shot 1: {camera} {character} {one action} in {place}. {look line}
+Shot 2: {camera change, e.g. close-up} {same character} {next action}. {look line}
+…
+Same person, same clothes in every shot. No text, no logos. {no-text tail}
+```
+Kling sets each shot's length (±1–2 s), so don't promise exact timings in the prompt;
+cut on the detected scene changes (`providers.md`) and re-cut the music to the result.
 
 ## Fail / freeze
 

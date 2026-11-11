@@ -15,7 +15,7 @@ tempo: snappy                   # snappy | relaxed (+ tempoOverrides: {…})
 cuts: { sfx: whoosh }           # a sound into every cut after the first (+ transition: {…})
 hook: { text: { t: hook }, line: hook, duration: 2 }
 brandBug: { from: 0 }           # the kit's brand bug over the shots
-music: { bed: bed }             # 4-music/bed.mp3; or { bpm: 118, offset: 0.4 } / { beats: [...] }
+music: { bed: bed }             # 4-music/bed.mp3 (+ loop: true); or { bpm: 118, offset: 0.4 } / { beats: [...] }
 end: { preset: end-card-classic, line: endcard.announcer, copy: { t: endcard.copy } }
 overlays: []                    # campaign-wide overlays (global time)
 captions: false
@@ -39,8 +39,17 @@ quip: quokka.quip
 
 - **Text**: write `{ t: key }`, a literal string, or `"… {{t.key}} …"`. Keys missing
   from `## Text` fall back to `copy/<locale>.yaml` → `text:`. A missing cell is an error.
-- **Per-locale overlay**: `storyboard.<locale>.md` with a `## Text` table
-  (`| key | text |`) and/or `## Shot <id>` yaml blocks that override fields.
+- **Per-locale overlay**: `storyboard.<locale>.md` with optional YAML front matter, a
+  `## Text` table (`| key | text |`) and/or `## Shot <id>` yaml blocks that override
+  fields. Front-matter keys `title`, `tempo`, `tempoOverrides`, `cuts`, `hook`,
+  `brandBug`, `overlays`, `music`, `end` and `captions` deep-merge over the
+  storyboard's for that locale only (e.g. a locale-specific end-card sheet:
+  `end: { sheet: sheet-en }`, or a different bed). `campaign`, `locales`, `extends` and
+  `shots` can't change per locale; other keys are errors (typos).
+- **Music bed**: `music: { bed }` plays once. A bed shorter than the video fades at its
+  own end and leaves silence (the run warns with the shortfall); add `loop: true` to
+  loop it instead. Other keys: `levelDb`, `duckDb`, `attackSec`, `releaseSec`,
+  `mergeGapSec`, `fadeOutSec`.
 - **Cut-downs**: a file with `extends: storyboard.md` and `shots: [a, b]` in its front
   matter.
 - **Assets**: keys resolve inside `media-work/<campaign>/`:
@@ -53,7 +62,8 @@ quip: quokka.quip
 
 Each shot has `preset:` and that preset's params (see `node "$E" presets`), plus:
 
-- `transition: { name: cut|flash-cut|dip|dip-white|whip, durSec }`: on the cut into this shot.
+- `transition: { name: cut|flash-cut|dip|dip-white|whip|dissolve|slide, durSec, direction }`:
+  on the cut into this shot (or for every cut: front matter `cuts: { transition: {…} }`).
 - `effects: [ { name, from, to, params } ]`: looks on a time window.
 - `overlays: [ … ]` and `audio: [ … ]`: extra items, in the same form as in presets.
 
@@ -90,6 +100,10 @@ Operators: `+ - * /`, comparisons, `&& || !`, `a ? b : c`, `a ?? b` (fallback), 
 - { pip: $recording, quad: [[x,y],[x,y],[x,y],[x,y]], from: 0, to: end }
 ```
 
+A `pip` takes `in`, `out` (source seconds), `speed` and `hold` (s): with `hold` the clip
+plays once to `out` and its last frame freezes for `hold` seconds; without it the clip
+loops. `phone-demo` exposes this as its `hold` param.
+
 Areas: `full`, `center`, `top-band`, `bottom-band`, `hud-top-left`, `hud-top-right`,
 `hud-bottom-left`, `hud-bottom-right`. Built-in graphics: `builtin:hook`, `brand-bug`,
 `stamp`, `rule`, `mark`, `photo-sheet`, `endcard-base`, `endcard-full`.
@@ -124,8 +138,20 @@ every montage cut.
 | `vhs` | `shift`, `noise`, `saturation`, `blur` | nostalgia, rewind |
 | `blur`, `vignette` | `sigma` / `angle` | focus |
 
-Transitions (`transition:` on a shot): `flash-cut`, `dip`, `dip-white` and `whip` are
-centred on the cut and never change timing.
+Transitions (`transition:` on a shot, or `cuts: { transition: … }` for every cut) never
+change timing:
+
+| Name | Params | Does |
+|---|---|---|
+| `flash-cut` | `durSec`, `alphas` | white flash centred on the cut |
+| `dip`, `dip-white` | `durSec` | through black / white, centred on the cut |
+| `whip` | `durSec`, `blur` | horizontal blur across the cut |
+| `dissolve` | `durSec` (0.35) | crossfade: the outgoing shot's last frame fades out over the first `durSec` of the incoming shot |
+| `slide` | `durSec` (0.35), `direction: left\|right\|up\|down` (left) | slide-over: the incoming shot slides in (cubic ease-out) over the outgoing shot's last frame |
+
+`dissolve` and `slide` start on the cut: the shots are concatenated before effects, so
+the outgoing side is its held last frame, not more footage. Keep `durSec` short
+(0.2–0.5 s) and don't put a voice-critical frame in the first `durSec` of a shot.
 
 ## Presets (project presets)
 
@@ -162,7 +188,12 @@ A kit preset with a built-in's name replaces it for this project.
 `media-kit/campaigns/<id>/hooks.mjs` may export:
 
 - `transform(timeline, ctx)`, which edits the resolved timeline;
-- `effects: { name: (effect, inLabel, outLabel, k) => ffmpegFilterText }`;
+- `effects: { name: (effect, inLabel, outLabel, k) => ffmpegFilterText }` (a hook effect
+  named like a built-in replaces it). Rules learnt the hard way: use frame indices
+  (`Math.round(t * 30)`) for cuts, never float seconds; never `xfade` two trims of one
+  stream; keep every branch on the base's timestamps from t=0; at most two `split`
+  branches per effect (a 3-way split chained over many cuts buffers without end — the
+  render watchdog then kills it);
 - `analysers: { name: (file, ctx) => … }`.
 
 It runs only for that campaign and is logged. If a hook keeps coming back, turn it into
